@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BNB Chat — trang thử widget</title>
+    <link rel="stylesheet" href="/src/demo.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">BNB Chat</div>
+      <div class="meta">Sandbox giao diện · Shadow DOM</div>
+    </header>
+    <main class="wrap">
+      <section class="card">
+        <h1>Thử widget</h1>
+        <p class="lead">
+          Nút nổi ở góc màn hình và khung bên phải là cùng một widget. Giao diện nằm trong
+          Shadow DOM nên CSS của trang này không chui vào bên trong.
+        </p>
+        <div class="controls">
+          <label>
+            Màu chủ đạo
+            <input id="color" type="color" value="#18181b" />
+          </label>
+          <label>
+            Vị trí nút nổi
+            <select id="position">
+              <option value="bottom-right">Góc phải</option>
+              <option value="bottom-left">Góc trái</option>
+            </select>
+          </label>
+          <button id="open" type="button">Mở hội thoại</button>
+          <button id="close" class="ghost" type="button">Đóng</button>
+        </div>
+        <p class="note">
+          Tin gửi tới agent trên <code>dev.boxx.vn</code>. Trang này phải đúng allowed origin của
+          kênh.
+        </p>
+        <ol class="steps">
+          <li><code>npm run dev</code> — trang này, sửa code là thấy ngay.</li>
+          <li><code>npm run build</code> — ra <code>dist/bnb-chat.js</code>.</li>
+          <li><code>npm run preview</code> — mở bản script đã build.</li>
+        </ol>
+      </section>
+      <section class="card stage-card">
+        <h2>Chế độ inline</h2>
+        <p class="note">Mount bằng <code>init({ container: '#inline-root' })</code>.</p>
+        <div id="inline-root"></div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

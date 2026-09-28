@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BNB Chat — embed preview</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        color: #18181b;
+        background: #f3f3f5;
+        line-height: 1.5;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding-bottom: 96px;
+        background-image: radial-gradient(#e4e4e7 1px, transparent 1px);
+        background-size: 18px 18px;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.92em;
+        background: #f4f4f5;
+        border-radius: 6px;
+        padding: 0 5px;
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 28px;
+        background: #fff;
+        border-bottom: 1px solid #e4e4e7;
+      }
+      .brand { font-weight: 700; }
+      .meta { color: #71717a; font-size: 13px; }
+      .wrap {
+        display: grid;
+        gap: 20px;
+        justify-items: start;
+        padding: 28px 440px 28px 28px;
+      }
+      .card {
+        width: min(640px, 100%);
+        background: #fff;
+        border: 1px solid #e4e4e7;
+        border-radius: 18px;
+        padding: 20px;
+      }
+      h1, h2 { margin: 0 0 8px; letter-spacing: -0.03em; }
+      h1 { font-size: 28px; }
+      h2 { font-size: 16px; }
+      .lead, .note { margin: 0 0 16px; color: #3f3f46; }
+      .err { color: #b91c1c; font-weight: 600; }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 16px;
+        align-items: end;
+        margin-bottom: 16px;
+      }
+      label { display: grid; gap: 6px; font-size: 13px; color: #3f3f46; }
+      input[type="color"] {
+        width: 72px;
+        height: 36px;
+        padding: 0;
+        border: 1px solid #e4e4e7;
+        border-radius: 8px;
+        background: #fff;
+      }
+      select, .controls button {
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid #d4d4d8;
+        background: #fff;
+        padding: 0 10px;
+        font: inherit;
+      }
+      .controls button {
+        cursor: pointer;
+        background: #18181b;
+        color: #fff;
+        border-color: #18181b;
+      }
+      .controls button.ghost { background: #fff; color: #18181b; }
+      .stage-card { display: flex; flex-direction: column; }
+      #inline-root {
+        height: 560px;
+        overflow: hidden;
+        border: 1px solid #e4e4e7;
+        border-radius: 16px;
+        background: #fff;
+      }
+      pre {
+        margin: 0;
+        padding: 12px;
+        overflow: auto;
+        border-radius: 12px;
+        background: #18181b;
+        color: #fafafa;
+        font-size: 13px;
+      }
+      @media (max-width: 860px) {
+        .wrap { padding: 20px 16px 20px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">BNB Chat</div>
+      <div class="meta">Bản embed đã build</div>
+    </header>
+    <main class="wrap">
+      <section class="card">
+        <h1>Script embed</h1>
+        <p class="lead">
+          Trang này tải <code>bnb-chat.js</code> rồi gọi <code>BnbChat.init()</code>. Tin gửi tới
+          agent trên <code>dev.boxx.vn</code>.
+        </p>
+        <p id="status" class="note">Đang kiểm tra <code>window.BnbChat</code>...</p>
+        <div class="controls">
+          <label>
+            Màu chủ đạo
+            <input id="color" type="color" value="#18181b" />
+          </label>
+          <label>
+            Vị trí nút nổi
+            <select id="position">
+              <option value="bottom-right">Góc phải</option>
+              <option value="bottom-left">Góc trái</option>
+            </select>
+          </label>
+          <button id="open" type="button">Mở hội thoại</button>
+          <button id="close" class="ghost" type="button">Đóng</button>
+        </div>
+        <pre>BnbChat.init({ primaryColor: '#18181b' })
+BnbChat.init({ container: '#inline-root' })</pre>
+      </section>
+      <section class="card stage-card">
+        <h2>Chế độ inline</h2>
+        <p class="note">Cùng file script, mount vào một phần tử có sẵn.</p>
+        <div id="inline-root"></div>
+      </section>
+    </main>
+    <script src="./bnb-chat.js"></script>
+    <script>
+      var statusNode = document.querySelector('#status');
+      var colorInput = document.querySelector('#color');
+      var positionInput = document.querySelector('#position');
+      var launcher = null;
+      var inline = null;
+
+      function mount() {
+        if (launcher) launcher.destroy();
+        if (inline) inline.destroy();
+        var primaryColor = colorInput.value;
+        var position = positionInput.value;
+        launcher = BnbChat.init({ primaryColor: primaryColor, position: position });
+        inline = BnbChat.init({
+          container: '#inline-root',
+          primaryColor: primaryColor,
+          position: position,
+        });
+      }
+
+      if (!window.BnbChat || typeof window.BnbChat.init !== 'function') {
+        statusNode.textContent = 'Không thấy window.BnbChat.init. Hãy chạy npm run build trước.';
+        statusNode.className = 'err';
+      } else {
+        statusNode.textContent = 'Đã gắn window.BnbChat.init từ bnb-chat.js.';
+        colorInput.addEventListener('change', mount);
+        positionInput.addEventListener('change', mount);
+        document.querySelector('#open').addEventListener('click', function () {
+          launcher.open();
+        });
+        document.querySelector('#close').addEventListener('click', function () {
+          launcher.close();
+        });
+        mount();
+      }
+    </script>
+  </body>
+</html>
