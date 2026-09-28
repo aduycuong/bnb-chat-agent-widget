@@ -9,7 +9,6 @@ export type EmbedRtdb = {
 export type EmbedBootstrap = {
   token: string;
   expiresAt: string;
-  rtdb: EmbedRtdb | null;
 };
 
 export type EmbedHistoryImage = {
@@ -37,6 +36,7 @@ export type EmbedSession = {
   firstMessage: string | null;
   sessionId: string | null;
   messages: EmbedHistoryMessage[];
+  notification: EmbedRtdb | null;
 };
 
 type EmbedStreamEvent =
@@ -205,6 +205,7 @@ export async function streamEmbedMessage(params: {
   images?: EmbedOutgoingImage[];
   signal?: AbortSignal;
   onToken: (content: string) => void;
+  onSession?: (sessionId: string) => void;
 }): Promise<string> {
   const response = await fetch(endpoint('/api/embed/messages'), {
     method: 'POST',
@@ -237,6 +238,7 @@ export async function streamEmbedMessage(params: {
     for (const line of lines) {
       if (!line.trim()) continue;
       const event = JSON.parse(line) as EmbedStreamEvent;
+      if (event.type === 'session' && event.sessionId) params.onSession?.(event.sessionId);
       if (event.type === 'token') params.onToken(event.content);
       if (event.type === 'error') {
         throw new EmbedRequestError('ERR_STREAM', event.message, 200);
@@ -251,20 +253,28 @@ export async function streamEmbedMessage(params: {
   return finalMessage;
 }
 
-export function openAssistantStream(
-  rtdb: EmbedRtdb,
+export function openNotificationStream(
+  notification: EmbedRtdb,
   handlers: {
     onMessage: (message: string) => void;
     onAuthRevoked: () => void;
   },
 ): EventSource {
-  const url = new URL(rtdb.streamUrl);
-  url.searchParams.set('auth', rtdb.authToken);
-  const source = new EventSource(url.toString());
+  const source = openAuthedStream(notification);
+  let sawSnapshot = false;
+  let appliedAt = 0;
 
   source.addEventListener('put', (event) => {
-    const message = readPutMessage((event as MessageEvent<string>).data);
-    if (message) handlers.onMessage(message);
+    const record = readNotificationPut((event as MessageEvent<string>).data);
+    if (!record) return;
+    if (!sawSnapshot) {
+      sawSnapshot = true;
+      appliedAt = record.updatedAt;
+      return;
+    }
+    if (!record.message || record.updatedAt <= appliedAt) return;
+    appliedAt = record.updatedAt;
+    handlers.onMessage(record.message);
   });
   source.addEventListener('auth_revoked', () => {
     handlers.onAuthRevoked();
@@ -273,11 +283,31 @@ export function openAssistantStream(
   return source;
 }
 
-function readPutMessage(raw: string): string | null {
+function openAuthedStream(stream: EmbedRtdb): EventSource {
+  const url = new URL(stream.streamUrl);
+  url.searchParams.set('auth', stream.authToken);
+  return new EventSource(url.toString());
+}
+
+function readNotificationPut(raw: string): { updatedAt: number; message: string | null } | null {
   try {
-    const payload = JSON.parse(raw) as { data?: { message?: unknown } | null };
-    const message = payload.data?.message;
-    return typeof message === 'string' && message.trim() ? message : null;
+    const body = JSON.parse(raw) as {
+      path?: unknown;
+      data?: {
+        updatedAt?: unknown;
+        payload?: { role?: unknown; message?: unknown } | null;
+      } | null;
+    };
+    if (body.path !== '/') return null;
+    const payload = body.data?.payload;
+    const message =
+      payload?.role === 'assistant' && typeof payload.message === 'string'
+        ? payload.message.trim()
+        : '';
+    return {
+      updatedAt: typeof body.data?.updatedAt === 'number' ? body.data.updatedAt : 0,
+      message: message || null,
+    };
   } catch {
     return null;
   }

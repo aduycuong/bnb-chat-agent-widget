@@ -1,4 +1,4 @@
-/** Định dạng tối thiểu cho tin trợ lý. Chỉ tạo text, strong, em, a, br, p, ul, ol, li. */
+/** Định dạng tối thiểu cho tin trợ lý. Chỉ tạo text, strong, em, a, img, br, p, ul, ol, li. */
 
 export function safeHttpUrl(value: string): string | null {
   try {
@@ -122,7 +122,9 @@ function appendInline(parent: ParentNode, source: string): void {
       const image = readLink(source, index + 1);
       if (image) {
         flush();
-        if (image.label) parent.append(document.createTextNode(image.label));
+        const src = safeHttpUrl(unwrapMarkdownUrl(image.url));
+        if (src) appendLinkedImage(parent, src, image.label);
+        else if (image.label) parent.append(document.createTextNode(image.label));
         index = image.end;
         continue;
       }
@@ -286,6 +288,61 @@ function readLink(source: string, index: number): { label: string; url: string; 
   }
   if (source[cursor] !== ')') return null;
   return { label, url, end: cursor + 1 };
+}
+
+function unwrapMarkdownUrl(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.startsWith('<') && trimmed.endsWith('>') && trimmed.length > 2) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
+export function appendLinkedImage(parent: ParentNode, src: string, alt: string): void {
+  const link = document.createElement('a');
+  link.className = 'image-link';
+  link.href = src;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  const picture = document.createElement('img');
+  picture.src = src;
+  picture.alt = alt;
+  picture.loading = 'lazy';
+  picture.decoding = 'async';
+  picture.referrerPolicy = 'no-referrer';
+  link.append(picture);
+  parent.append(link);
+}
+
+export function splitMessageImages(source: string): { text: string; images: { src: string; alt: string }[] } {
+  const images: { src: string; alt: string }[] = [];
+  let text = '';
+  let index = 0;
+
+  while (index < source.length) {
+    if (source[index] === '\\' && source[index + 1] === '!') {
+      text += '!';
+      index += 2;
+      continue;
+    }
+    if (source[index] === '!' && source[index + 1] === '[') {
+      const image = readLink(source, index + 1);
+      const src = image ? safeHttpUrl(unwrapMarkdownUrl(image.url)) : null;
+      if (image && src) {
+        images.push({ src, alt: image.label.trim() });
+        index = image.end;
+        continue;
+      }
+    }
+    text += source[index];
+    index += 1;
+  }
+
+  if (images.length === 0) return { text: source, images };
+  return {
+    text: text.replace(/[ \t]+\n/g, '\n').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim(),
+    images,
+  };
 }
 
 function appendAnchor(parent: ParentNode, href: string, label: string): void {

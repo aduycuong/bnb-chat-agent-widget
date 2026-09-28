@@ -1,5 +1,5 @@
 /** Fixed until widget config is wired. Not a secret. */
-export const EMBED_PUBLIC_KEY = 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw';
+export const EMBED_PUBLIC_KEY = 'ukBYP38IRldhDqwUhFV5mjYjAzAp2fkX';
 
 export const EMBED_BASE_URL = 'https://dev.boxx.vn';
 

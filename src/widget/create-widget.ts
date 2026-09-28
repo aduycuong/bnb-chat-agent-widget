@@ -10,15 +10,16 @@ import {
   embedImageContentType,
   isEmbedTokenExpired,
   loadEmbedSession,
-  openAssistantStream,
+  openNotificationStream,
   readVisitorId,
   streamEmbedMessage,
   uploadEmbedImage,
   type EmbedHistoryImage,
   type EmbedOutgoingImage,
   type EmbedRtdb,
+  type EmbedSession,
 } from './embed-api';
-import { renderAssistantContent, safeHttpUrl } from './assistant-text';
+import { appendLinkedImage, renderAssistantContent, safeHttpUrl, splitMessageImages } from './assistant-text';
 import { widgetCss } from './styles';
 import type { BnbChatHandle, ResolvedOptions } from './types';
 
@@ -212,7 +213,10 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
 
   const visitorId = readVisitorId(options.layout);
   const abort = new AbortController();
-  let source: EventSource | null = null;
+  let notificationSource: EventSource | null = null;
+  let notificationTimer: number | null = null;
+  let notificationRefresh: Promise<void> | null = null;
+  let sessionId: string | null = null;
   let token = '';
   let pending = 0;
   let hasUser = false;
@@ -255,14 +259,16 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     finish(text: string): void;
   };
 
-  function appendImages(bubble: HTMLElement, images: EmbedHistoryImage[] | undefined): void {
+  function appendImages(
+    bubble: HTMLElement,
+    images: EmbedHistoryImage[] | undefined,
+    seen: Set<string>,
+  ): void {
     for (const image of images ?? []) {
       const src = safeHttpUrl(image.url);
-      if (!src) continue;
-      const picture = el('img');
-      picture.src = src;
-      picture.alt = image.fileName?.trim() || '';
-      bubble.append(picture);
+      if (!src || seen.has(src)) continue;
+      seen.add(src);
+      appendLinkedImage(bubble, src, image.fileName?.trim() || '');
     }
   }
 
@@ -278,8 +284,10 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       avatar.textContent = 'B';
       row.append(avatar);
     }
+    const parsed = role === 'user' ? splitMessageImages(text) : { text, images: [] as { src: string; alt: string }[] };
+    const seen = new Set(parsed.images.map((image) => image.src));
     const bubble = el('div', extras?.error ? 'bubble error' : 'bubble');
-    if (!text.trim() && (extras?.images?.length ?? 0) > 0) bubble.classList.add('media');
+    if (!parsed.text.trim() && (seen.size > 0 || (extras?.images?.length ?? 0) > 0)) bubble.classList.add('media');
     bubble.dir = 'auto';
     const who = el('span', 'sr-only');
     who.textContent = role === 'user' ? 'Bạn: ' : 'Trợ lý: ';
@@ -287,7 +295,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     if (role === 'assistant' && !extras?.error) {
       const rich = el('div', 'rich');
       bubble.append(who, rich);
-      appendImages(bubble, extras?.images);
+      appendImages(bubble, extras?.images, seen);
       row.append(bubble);
       list.append(row);
       const showPlain = (next: string): void => {
@@ -307,9 +315,10 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       return { update: showPlain, finish: showRich };
     }
 
-    const textNode = document.createTextNode(text);
+    const textNode = document.createTextNode(parsed.text);
     bubble.append(who, textNode);
-    appendImages(bubble, extras?.images);
+    for (const image of parsed.images) appendLinkedImage(bubble, image.src, image.alt);
+    appendImages(bubble, extras?.images, seen);
     row.append(bubble);
     list.append(row);
     if (role === 'user') hasUser = true;
@@ -352,21 +361,72 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     textarea.focus();
   }
 
-  function bindStream(rtdb: EmbedRtdb | null): void {
-    source?.close();
-    source = null;
-    if (!rtdb || abort.signal.aborted) return;
-    source = openAssistantStream(rtdb, {
+  function clearNotificationTimer(): void {
+    if (notificationTimer === null) return;
+    window.clearTimeout(notificationTimer);
+    notificationTimer = null;
+  }
+
+  function bindNotification(notification: EmbedRtdb | null): void {
+    notificationSource?.close();
+    notificationSource = null;
+    clearNotificationTimer();
+    if (!notification || abort.signal.aborted) return;
+    notificationSource = openNotificationStream(notification, {
       onMessage(message) {
-        if (sending || abort.signal.aborted) return;
+        if (abort.signal.aborted) return;
         if (lastAssistantText() === message) return;
         appendMessage('assistant', message);
         syncSuggestions();
       },
       onAuthRevoked() {
-        void refreshSession(true);
+        void refreshNotification(true);
       },
     });
+    const expires = Date.parse(notification.expiresAt);
+    if (!Number.isFinite(expires)) return;
+    const delay = Math.max(15_000, expires - Date.now() - 30_000);
+    notificationTimer = window.setTimeout(() => {
+      notificationTimer = null;
+      void refreshNotification(false);
+    }, delay);
+  }
+
+  function adoptSession(nextSessionId: string): void {
+    if (!nextSessionId || nextSessionId === sessionId) return;
+    sessionId = nextSessionId;
+    void refreshNotification(false);
+  }
+
+  async function refreshNotification(reportError: boolean): Promise<void> {
+    if (abort.signal.aborted || !token) return;
+    if (notificationRefresh) return notificationRefresh;
+    notificationRefresh = reloadNotification(reportError).finally(() => {
+      notificationRefresh = null;
+    });
+    return notificationRefresh;
+  }
+
+  async function reloadNotification(reportError: boolean): Promise<void> {
+    try {
+      const session = await loadNotificationSession();
+      if (abort.signal.aborted) return;
+      if (session.sessionId) sessionId = session.sessionId;
+      bindNotification(session.notification ?? null);
+    } catch (error) {
+      if (reportError && !abort.signal.aborted) showError(error);
+    }
+  }
+
+  async function loadNotificationSession(): Promise<EmbedSession> {
+    try {
+      return await loadEmbedSession(token, visitorId, abort.signal);
+    } catch (error) {
+      if (!isEmbedTokenExpired(error) || abort.signal.aborted) throw error;
+      const refreshed = await refreshSession(false);
+      if (!refreshed || abort.signal.aborted) throw error;
+      return loadEmbedSession(token, visitorId, abort.signal);
+    }
   }
 
   async function refreshSession(reportError: boolean): Promise<boolean> {
@@ -376,7 +436,6 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       const boot = await bootstrapEmbed(visitorId, abort.signal);
       if (abort.signal.aborted) return false;
       token = boot.token;
-      bindStream(boot.rtdb);
       return true;
     } catch (error) {
       if (reportError && !abort.signal.aborted) showError(error);
@@ -400,7 +459,6 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     try {
       let boot = await bootstrapEmbed(visitorId, abort.signal);
       token = boot.token;
-      bindStream(boot.rtdb);
       let session;
       try {
         session = await loadEmbedSession(token, visitorId, abort.signal);
@@ -408,7 +466,6 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
         if (!isEmbedTokenExpired(error)) throw error;
         boot = await bootstrapEmbed(visitorId, abort.signal);
         token = boot.token;
-        bindStream(boot.rtdb);
         session = await loadEmbedSession(token, visitorId, abort.signal);
       }
       if (abort.signal.aborted) return false;
@@ -425,6 +482,8 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       } else if (session.firstMessage?.trim()) {
         appendMessage('assistant', session.firstMessage.trim());
       }
+      sessionId = session.sessionId;
+      bindNotification(session.notification ?? null);
       syncSuggestions();
       ready = true;
       subtitle.textContent = options.subtitle;
@@ -627,6 +686,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       message: text,
       images,
       signal: abort.signal,
+      onSession: adoptSession,
       onToken(chunk) {
         draft.text += chunk;
         if (!draft.body) {
@@ -829,8 +889,9 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     destroy() {
       abort.abort();
       dropDrafts();
-      source?.close();
-      source = null;
+      notificationSource?.close();
+      notificationSource = null;
+      clearNotificationTimer();
       host.remove();
     },
   };

@@ -191,11 +191,18 @@ textarea {
   border-color: #fecdd3;
 }
 
+.bubble a.image-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
 .bubble img {
   display: block;
   max-width: 100%;
   margin-top: 8px;
   border-radius: 8px;
+  cursor: pointer;
 }
 
 .bubble.media {
@@ -206,6 +213,7 @@ textarea {
   margin-top: 0;
 }
 
+.bubble.media a.image-link + a.image-link img,
 .bubble.media img + img {
   margin-top: 6px;
 }
@@ -250,6 +258,10 @@ textarea {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.rich a.image-link {
+  text-decoration: none;
 }
 
 .msg.user .bubble {
