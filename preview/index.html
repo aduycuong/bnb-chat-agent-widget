@@ -141,9 +141,9 @@
         </p>
         <h3>Popup</h3>
         <pre><code>&lt;script
-  src="https://dev.boxx.vn/embed/bnb-chat.js"
+  src="https://bnb-chat-agent.bienhinh.vn/embed/bnb-chat.js"
   data-public-key="HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw"
-  data-base-url="https://dev.boxx.vn"
+  data-base-url="https://bnb-chat-agent.bienhinh.vn/"
   data-mode="popup"
   data-primary-color="#18181b"
   data-position="bottom-right"
@@ -156,9 +156,9 @@
         <h3>Inline</h3>
         <pre><code>&lt;div id="bnb-chat"&gt;&lt;/div&gt;
 &lt;script
-  src="https://dev.boxx.vn/embed/bnb-chat.js"
+  src="https://bnb-chat-agent.bienhinh.vn/embed/bnb-chat.js"
   data-public-key="HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw"
-  data-base-url="https://dev.boxx.vn"
+  data-base-url="https://bnb-chat-agent.bienhinh.vn/"
   data-mode="inline"
   data-target="bnb-chat"
   data-primary-color="#18181b"
@@ -174,17 +174,17 @@
           Thẻ script không có <code>data-public-key</code>. Trang tự gọi <code>init</code> sau khi file đã tải.
           Có <code>container</code> thì là inline, không có thì là popup.
         </p>
-        <pre><code>&lt;script src="https://dev.boxx.vn/embed/bnb-chat.js"&gt;&lt;/script&gt;
+        <pre><code>&lt;script src="https://bnb-chat-agent.bienhinh.vn/embed/bnb-chat.js"&gt;&lt;/script&gt;
 &lt;script&gt;
   var popup = BnbChat.init({
     publicKey: 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw',
-    baseUrl: 'https://dev.boxx.vn',
+    baseUrl: 'https://bnb-chat-agent.bienhinh.vn/',
     primaryColor: '#18181b',
     position: 'bottom-right'
   });
   var inline = BnbChat.init({
     publicKey: 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw',
-    baseUrl: 'https://dev.boxx.vn',
+    baseUrl: 'https://bnb-chat-agent.bienhinh.vn/',
     container: '#bnb-chat',
     primaryColor: '#18181b'
   });
@@ -202,7 +202,7 @@
         <p class="note">
           Thẻ script của trang này không gắn <code>data-*</code>, rồi gọi <code>BnbChat.init()</code>
           cho popup và inline. Đổi màu hoặc vị trí sẽ gắn lại cả hai.
-          Tin gửi tới agent trên <code>dev.boxx.vn</code>.
+          Tin gửi tới agent trên <code>bnb-chat-agent.bienhinh.vn</code>.
         </p>
         <div class="controls">
           <label>
@@ -230,7 +230,7 @@
     <script src="./bnb-chat.js"></script>
     <script>
       var PUBLIC_KEY = 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw';
-      var BASE_URL = 'https://dev.boxx.vn';
+      var BASE_URL = 'https://bnb-chat-agent.bienhinh.vn/';
       var statusNode = document.querySelector('#status');
       var colorInput = document.querySelector('#color');
       var positionInput = document.querySelector('#position');
