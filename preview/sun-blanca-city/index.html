@@ -222,10 +222,9 @@
       .frame {
         position: relative;
         z-index: 1;
-        width: auto;
-        height: min(52vh, 560px);
-        max-width: min(78vw, 380px);
-        aspect-ratio: 2 / 3;
+        width: min(78vw, 380px);
+        height: auto;
+        aspect-ratio: 1024 / 1280;
         padding: 8px;
         border-radius: 22px;
         background: linear-gradient(180deg, rgba(243, 226, 188, 0.24), rgba(228, 177, 90, 0.06));
@@ -236,6 +235,12 @@
         overflow: hidden;
       }
       .frame.is-ready { animation: float 7s ease-in-out 1.05s infinite alternate; }
+      .frame a {
+        display: block;
+        height: 100%;
+        cursor: pointer;
+        pointer-events: auto;
+      }
       .frame img {
         display: block;
         width: 100%;
@@ -346,7 +351,7 @@
         .cta { margin-top: 20px; }
         .stage.has-result .cta { margin-top: 12px; }
         .dune { height: 20vh; }
-        .frame { height: min(44vh, 340px); width: auto; }
+        .frame { width: min(78vw, calc(min(44vh, 340px) * 1024 / 1280)); height: auto; }
         .stage.has-result .content { top: 2.4vh; }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -395,12 +400,14 @@
         <div class="hero">
           <p class="kicker">Thành phố ánh sáng</p>
           <h1><span>Sun Blanca</span><em>City</em></h1>
-          <p class="deck">Vàng sa mạc trên nền đen của vũ trụ.</p>
+          <p class="deck">Ngày mới bắt đầu khi mặt trời thức dậy trong lòng thành phố.</p>
         </div>
         <figure class="portrait" id="portrait" hidden aria-live="polite">
           <div class="aura" aria-hidden="true"></div>
           <div class="frame" id="portrait-frame">
-            <img id="result-image" alt="Hình biến hình Sun Blanca City" />
+            <a id="result-link" target="_blank" rel="noopener noreferrer" aria-label="Mở hình biến hình">
+              <img id="result-image" alt="Hình biến hình Sun Blanca City" />
+            </a>
             <span class="sheen" aria-hidden="true"></span>
             <span class="corner tl" aria-hidden="true"></span>
             <span class="corner tr" aria-hidden="true"></span>
@@ -468,11 +475,14 @@
         var stage = document.querySelector('.stage');
         var portrait = document.querySelector('#portrait');
         var frame = document.querySelector('#portrait-frame');
+        var resultLink = document.querySelector('#result-link');
         var resultImage = document.querySelector('#result-image');
         var caption = document.querySelector('#portrait-caption');
         var shownUrl = '';
         var chat = null;
         var root = null;
+
+        var RESULT_IMAGE_PREFIX = 'https://bnb-chat-agent-media.bienhinh.vn/bienhinh-results';
 
         function safeImageUrl(value) {
           try {
@@ -482,6 +492,15 @@
           } catch (error) {
             return '';
           }
+        }
+
+        function resultImageFromMessage(message) {
+          if (typeof message !== 'string') return '';
+          var start = message.indexOf(RESULT_IMAGE_PREFIX);
+          if (start < 0) return '';
+          var end = start + RESULT_IMAGE_PREFIX.length;
+          while (end < message.length && !/[\s)\]"'<>]/.test(message.charAt(end))) end += 1;
+          return message.slice(start, end);
         }
 
         function closeChatIfOpen() {
@@ -494,6 +513,7 @@
           closeChatIfOpen();
           if (safe === shownUrl) return;
           shownUrl = safe;
+          resultLink.href = safe;
           caption.textContent = 'Đã biến hình';
           stage.classList.add('has-result');
           portrait.hidden = false;
@@ -523,9 +543,10 @@
           primaryColor: '#e4b15a',
           position: 'bottom-right',
           onNotification: function (payload) {
-            if (!payload || payload.event !== 'bienhinh_image_completed') return;
-            if (typeof payload.imageUrl !== 'string') return;
-            presentResult(payload.imageUrl.trim());
+            if (!payload) return;
+            var imageUrl = resultImageFromMessage(payload.message);
+            if (!imageUrl) return;
+            presentResult(imageUrl);
           },
         });
         var host = document.querySelector('bnb-chat-host');
