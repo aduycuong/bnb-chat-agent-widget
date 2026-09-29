@@ -4,7 +4,6 @@ import {
   DEFAULT_POSITION,
   DEFAULT_PRIMARY,
   DEFAULT_SUBTITLE,
-  DEFAULT_SUGGESTIONS,
   DEFAULT_TITLE,
   DEFAULT_Z_INDEX,
 } from './defaults';
@@ -34,9 +33,10 @@ function resolveOptions(options: BnbChatOptions): ResolvedOptions {
       typeof options.zIndex === 'number' && Number.isFinite(options.zIndex)
         ? options.zIndex
         : DEFAULT_Z_INDEX,
-    suggestions: (options.suggestions ?? DEFAULT_SUGGESTIONS)
+    suggestions: (options.suggestions ?? [])
       .map((item) => item.trim())
       .filter((item) => item.length > 0),
+    suggestionsFromUser: options.suggestions !== undefined,
     titleFromUser: clean(options.title) !== null,
   };
 }

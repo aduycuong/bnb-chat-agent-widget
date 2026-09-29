@@ -14,7 +14,10 @@ export type BnbChatOptions = {
   primaryColor?: string;
   position?: BnbChatPosition;
   zIndex?: number;
-  /** Gợi ý bấm được. Truyền mảng rỗng để ẩn. */
+  /**
+   * Gợi ý bấm được. Bỏ qua thì lấy `conversationStarters` từ bootstrap.
+   * Truyền mảng rỗng để ẩn.
+   */
   suggestions?: string[];
 };
 
@@ -36,6 +39,8 @@ export type ResolvedOptions = {
   position: BnbChatPosition;
   zIndex: number;
   suggestions: string[];
+  /** False khi không truyền suggestions — widget lấy câu gợi ý từ bootstrap. */
+  suggestionsFromUser: boolean;
   /** False khi không truyền title — widget lấy tên agent từ session. */
   titleFromUser: boolean;
 };

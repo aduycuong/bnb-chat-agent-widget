@@ -9,6 +9,8 @@ export type EmbedRtdb = {
 export type EmbedBootstrap = {
   token: string;
   expiresAt: string;
+  avatarUrl: string | null;
+  conversationStarters: string[];
 };
 
 export type EmbedHistoryImage = {
@@ -112,7 +114,7 @@ export async function bootstrapEmbed(
     signal,
   });
   if (!response.ok) throw await readError(response);
-  return (await response.json()) as EmbedBootstrap;
+  return readBootstrap(await response.json());
 }
 
 export async function loadEmbedSession(
@@ -311,6 +313,36 @@ function readNotificationPut(raw: string): { updatedAt: number; message: string 
   } catch {
     return null;
   }
+}
+
+const STARTER_MAX_COUNT = 6;
+const STARTER_MAX_LENGTH = 120;
+
+function readBootstrap(value: unknown): EmbedBootstrap {
+  const body = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  if (typeof body.token !== 'string' || !body.token || typeof body.expiresAt !== 'string') {
+    throw new EmbedRequestError('ERR_INTERNAL', 'Bootstrap response was incomplete.', 200);
+  }
+  const avatar = typeof body.avatarUrl === 'string' ? body.avatarUrl.trim() : '';
+  return {
+    token: body.token,
+    expiresAt: body.expiresAt,
+    avatarUrl: avatar || null,
+    conversationStarters: readConversationStarters(body.conversationStarters),
+  };
+}
+
+function readConversationStarters(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const starters: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') continue;
+    const text = item.trim().slice(0, STARTER_MAX_LENGTH);
+    if (!text) continue;
+    starters.push(text);
+    if (starters.length >= STARTER_MAX_COUNT) break;
+  }
+  return starters;
 }
 
 function endpoint(path: string): string {

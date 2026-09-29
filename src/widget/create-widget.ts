@@ -16,6 +16,7 @@ import {
   uploadEmbedImage,
   type EmbedHistoryImage,
   type EmbedOutgoingImage,
+  type EmbedBootstrap,
   type EmbedRtdb,
   type EmbedSession,
 } from './embed-api';
@@ -232,7 +233,47 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   typing.setAttribute('aria-label', 'Đang trả lời');
   const typingAvatar = el('div', 'avatar');
   typingAvatar.setAttribute('aria-hidden', 'true');
-  typingAvatar.textContent = 'B';
+
+  const AVATAR_MARK = 'B';
+  let avatarSrc: string | null = null;
+  let starterItems = options.suggestions;
+
+  function repaintAvatars(): void {
+    paintAvatar(mark);
+    paintAvatar(typingAvatar);
+    list.querySelectorAll('.avatar').forEach((node) => {
+      if (node instanceof HTMLElement) paintAvatar(node);
+    });
+  }
+
+  function paintAvatar(node: HTMLElement): void {
+    node.replaceChildren();
+    const src = avatarSrc;
+    if (!src) {
+      node.classList.remove('photo');
+      node.textContent = AVATAR_MARK;
+      return;
+    }
+    const image = el('img');
+    image.alt = '';
+    image.draggable = false;
+    image.addEventListener('error', () => {
+      if (!node.contains(image) || avatarSrc !== src) return;
+      avatarSrc = null;
+      repaintAvatars();
+    });
+    node.classList.add('photo');
+    node.append(image);
+    image.src = src;
+  }
+
+  function setAvatarUrl(url: string | null): void {
+    avatarSrc = url ? safeHttpUrl(url) : null;
+    repaintAvatars();
+  }
+
+  paintAvatar(mark);
+  paintAvatar(typingAvatar);
   const typingBubble = el('div', 'bubble typing');
   typingBubble.append(el('span'), el('span'), el('span'));
   typing.append(typingAvatar, typingBubble);
@@ -242,7 +283,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   }
 
   function syncSuggestions(): void {
-    const visible = !hasUser && options.suggestions.length > 0;
+    const visible = !hasUser && starterItems.length > 0;
     suggestions.hidden = !visible;
   }
 
@@ -281,7 +322,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     if (role === 'assistant') {
       const avatar = el('div', 'avatar');
       avatar.setAttribute('aria-hidden', 'true');
-      avatar.textContent = 'B';
+      paintAvatar(avatar);
       row.append(avatar);
     }
     const parsed = role === 'user' ? splitMessageImages(text) : { text, images: [] as { src: string; alt: string }[] };
@@ -435,7 +476,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     try {
       const boot = await bootstrapEmbed(visitorId, abort.signal);
       if (abort.signal.aborted) return false;
-      token = boot.token;
+      adoptBootstrap(boot, true);
       return true;
     } catch (error) {
       if (reportError && !abort.signal.aborted) showError(error);
@@ -458,14 +499,14 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     syncSend();
     try {
       let boot = await bootstrapEmbed(visitorId, abort.signal);
-      token = boot.token;
+      adoptBootstrap(boot, false);
       let session;
       try {
         session = await loadEmbedSession(token, visitorId, abort.signal);
       } catch (error) {
         if (!isEmbedTokenExpired(error)) throw error;
         boot = await bootstrapEmbed(visitorId, abort.signal);
-        token = boot.token;
+        adoptBootstrap(boot, false);
         session = await loadEmbedSession(token, visitorId, abort.signal);
       }
       if (abort.signal.aborted) return false;
@@ -484,7 +525,8 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       }
       sessionId = session.sessionId;
       bindNotification(session.notification ?? null);
-      syncSuggestions();
+      if (!options.suggestionsFromUser) setStarters(boot.conversationStarters);
+      else syncSuggestions();
       ready = true;
       subtitle.textContent = options.subtitle;
       return true;
@@ -825,19 +867,30 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     else launcher.focus();
   }
 
-  for (const suggestion of options.suggestions) {
-    const chip = el('button');
-    chip.type = 'button';
-    chip.textContent = suggestion;
-    chip.addEventListener('click', () => {
-      if (options.layout === 'launcher' && !isOpen) setOpen(true, false);
-      sendText(suggestion);
-      textarea.focus();
-    });
-    suggestions.append(chip);
+  function adoptBootstrap(boot: EmbedBootstrap, paintStarters: boolean): void {
+    token = boot.token;
+    setAvatarUrl(boot.avatarUrl);
+    if (paintStarters && !options.suggestionsFromUser) setStarters(boot.conversationStarters);
   }
 
-  syncSuggestions();
+  function setStarters(items: string[]): void {
+    starterItems = items;
+    suggestions.replaceChildren();
+    for (const suggestion of items) {
+      const chip = el('button');
+      chip.type = 'button';
+      chip.textContent = suggestion;
+      chip.addEventListener('click', () => {
+        if (options.layout === 'launcher' && !isOpen) setOpen(true, false);
+        void sendText(suggestion);
+        textarea.focus();
+      });
+      suggestions.append(chip);
+    }
+    syncSuggestions();
+  }
+
+  setStarters(options.suggestions);
   syncSend();
   void connect();
 

@@ -87,6 +87,12 @@ textarea {
   background: rgba(255, 255, 255, 0.16);
   font-size: 15px;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.mark.photo {
+  place-items: stretch;
+  background: #fff;
 }
 
 .titles {
@@ -169,6 +175,20 @@ textarea {
   color: var(--bnb-on-primary);
   font-size: 12px;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.avatar.photo {
+  place-items: stretch;
+  background: #fff;
+}
+
+.mark.photo img,
+.avatar.photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .bubble {

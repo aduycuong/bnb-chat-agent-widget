@@ -7,4 +7,3 @@ export const DEFAULT_GREETING = 'Xin chào, mình có thể giúp gì về chỗ
 export const DEFAULT_PRIMARY = '#18181b';
 export const DEFAULT_POSITION: BnbChatPosition = 'bottom-right';
 export const DEFAULT_Z_INDEX = 2147483000;
-export const DEFAULT_SUGGESTIONS = ['Giờ nhận phòng', 'Chính sách hủy', 'Tiện nghi'];
