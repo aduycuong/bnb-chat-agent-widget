@@ -65,6 +65,7 @@ function resolveOptions(options: BnbChatOptions): ResolvedOptions {
     parent: options.container ? resolveParent(options.container) : requireBody(),
     publicKey: requirePublicKey(options.publicKey),
     baseUrl: normalizeBaseUrl(options.baseUrl),
+    name: resolveName(options.name),
     title: clean(options.title) ?? DEFAULT_TITLE,
     subtitle: clean(options.subtitle) ?? DEFAULT_SUBTITLE,
     placeholder: clean(options.placeholder) ?? DEFAULT_PLACEHOLDER,
@@ -102,6 +103,15 @@ function resolveParent(container: HTMLElement | string): HTMLElement {
     throw new Error(`BNB Chat: không tìm thấy phần tử "${container}".`);
   }
   return found;
+}
+
+function resolveName(value: string | undefined): string {
+  const next = value?.trim() ?? '';
+  if (!next) return 'default';
+  if (next.length > 80 || /[\u0000-\u001f\u007f]/.test(next)) {
+    throw new Error('BNB Chat: name không hợp lệ.');
+  }
+  return next;
 }
 
 function requirePublicKey(value: string | undefined): string {

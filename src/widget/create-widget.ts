@@ -249,7 +249,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   root.append(panel, launcher);
   shadow.append(style, root);
 
-  const visitorId = readVisitorId(options.publicKey);
+  const visitorId = readVisitorId(options.publicKey, options.name);
   const abort = new AbortController();
   let notificationSource: EventSource | null = null;
   let notificationTimer: number | null = null;

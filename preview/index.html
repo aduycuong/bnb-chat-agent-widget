@@ -172,19 +172,22 @@
         <h2>Cách 2 — gọi BnbChat.init()</h2>
         <p class="note">
           Thẻ script không có <code>data-public-key</code>. Trang tự gọi <code>init</code> sau khi file đã tải.
-          Có <code>container</code> thì là inline, không có thì là popup.
+          Có <code>container</code> thì mode là inline, không có thì là popup.
+          <code>name</code> tách visitor khi một trang có nhiều widget. Không truyền thì name là <code>default</code>.
         </p>
         <pre><code>&lt;script src="https://bnb-chat-agent.bienhinh.vn/embed/bnb-chat.js"&gt;&lt;/script&gt;
 &lt;script&gt;
   var popup = BnbChat.init({
     publicKey: 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw',
     baseUrl: 'https://bnb-chat-agent.bienhinh.vn/',
+    name: 'popup',
     primaryColor: '#18181b',
     position: 'bottom-right'
   });
   var inline = BnbChat.init({
     publicKey: 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw',
     baseUrl: 'https://bnb-chat-agent.bienhinh.vn/',
+    name: 'inline',
     container: '#bnb-chat',
     primaryColor: '#18181b'
   });
@@ -192,8 +195,9 @@
   popup.close();
 &lt;/script&gt;</code></pre>
         <p class="note">
-          Một trang có thể có cả hai mode. Script đã có <code>data-public-key</code> thì tự tạo một widget;
-          gọi thêm <code>init()</code> sẽ tạo widget thứ hai.
+          Thẻ script chỉ gắn một widget nên không cần <code>data-name</code>.
+          Gọi <code>init()</code> nhiều lần thì đặt <code>name</code> khác nhau để mỗi widget một visitor.
+          <code>data-mode</code> chỉ nhận <code>popup</code> hoặc <code>inline</code>.
         </p>
       </section>
 
@@ -201,7 +205,7 @@
         <h2>Demo trên trang này</h2>
         <p class="note">
           Thẻ script của trang này không gắn <code>data-*</code>, rồi gọi <code>BnbChat.init()</code>
-          cho popup và inline. Đổi màu hoặc vị trí sẽ gắn lại cả hai.
+          hai lần với <code>name</code> là <code>popup</code> và <code>inline</code>. Đổi màu hoặc vị trí sẽ gắn lại cả hai.
           Tin gửi tới agent trên <code>bnb-chat-agent.bienhinh.vn</code>.
         </p>
         <div class="controls">
@@ -245,12 +249,14 @@
         launcher = BnbChat.init({
           publicKey: PUBLIC_KEY,
           baseUrl: BASE_URL,
+          name: 'popup',
           primaryColor: primaryColor,
           position: position,
         });
         inline = BnbChat.init({
           publicKey: PUBLIC_KEY,
           baseUrl: BASE_URL,
+          name: 'inline',
           container: '#inline-root',
           primaryColor: primaryColor,
         });

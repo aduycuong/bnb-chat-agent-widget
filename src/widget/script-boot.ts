@@ -5,6 +5,7 @@ const SCRIPT_ATTRS = [
   'baseUrl',
   'mode',
   'target',
+  'name',
   'primaryColor',
   'position',
 ] as const;
@@ -35,9 +36,11 @@ export function bootFromScript(init: Init): void {
 
 function optionsFromScript(script: HTMLScriptElement): BnbChatOptions {
   const primaryColor = script.dataset.primaryColor?.trim();
+  const name = script.dataset.name?.trim();
   const options: BnbChatOptions = {
     publicKey: script.dataset.publicKey?.trim() ?? '',
     baseUrl: script.dataset.baseUrl?.trim() ?? '',
+    ...(name ? { name } : {}),
     ...(primaryColor ? { primaryColor } : {}),
   };
   const mode = (script.dataset.mode || 'popup').toLowerCase();

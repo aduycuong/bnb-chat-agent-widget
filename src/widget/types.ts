@@ -57,6 +57,11 @@ export type BnbChatOptions = {
   baseUrl: string;
   /** Phần tử hoặc selector. Có giá trị thì widget nằm inline trong đó. */
   container?: HTMLElement | string;
+  /**
+   * Tên widget trên trang. Cùng publicKey, khác name thì mỗi widget một visitor.
+   * Bỏ trống thì là "default".
+   */
+  name?: string;
   title?: string;
   subtitle?: string;
   placeholder?: string;
@@ -92,6 +97,8 @@ export type ResolvedOptions = {
   parent: HTMLElement;
   publicKey: string;
   baseUrl: string;
+  /** "default" khi không truyền name. */
+  name: string;
   title: string;
   subtitle: string;
   placeholder: string;

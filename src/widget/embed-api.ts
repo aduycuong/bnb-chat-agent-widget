@@ -78,8 +78,9 @@ export class EmbedRequestError extends Error {
   }
 }
 
-export function readVisitorId(publicKey: string): string {
-  const key = `bnb-chat-visitor:${publicKey}`;
+/** Visitor theo publicKey và name. name rỗng được coi là "default". */
+export function readVisitorId(publicKey: string, name: string): string {
+  const key = `bnb-chat-visitor:${publicKey}:${name || 'default'}`;
   try {
     const existing = localStorage.getItem(key);
     if (existing && isUuid(existing)) return existing;
