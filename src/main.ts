@@ -1,5 +1,8 @@
 import { init, type BnbChatHandle, type BnbChatPosition } from './widget/init';
 
+const PUBLIC_KEY = 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw';
+const BASE_URL = 'https://dev.boxx.vn';
+
 const colorInput = document.querySelector<HTMLInputElement>('#color');
 const positionInput = document.querySelector<HTMLSelectElement>('#position');
 const inlineRoot = document.querySelector<HTMLElement>('#inline-root');
@@ -26,8 +29,10 @@ function mount(): void {
   inline?.destroy();
   const primaryColor = color.value;
   const position = readPosition(positionSelect.value);
-  launcher = init({ primaryColor, position });
+  launcher = init({ publicKey: PUBLIC_KEY, baseUrl: BASE_URL, primaryColor, position });
   inline = init({
+    publicKey: PUBLIC_KEY,
+    baseUrl: BASE_URL,
     container: inlineHost,
     primaryColor,
     position,

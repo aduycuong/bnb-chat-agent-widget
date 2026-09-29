@@ -19,7 +19,7 @@ import type {
 
 export type { BnbChatHandle, BnbChatIcons, BnbChatOptions, BnbChatPosition, BnbChatTheme };
 
-export function init(options: BnbChatOptions = {}): BnbChatHandle {
+export function init(options: BnbChatOptions): BnbChatHandle {
   return createWidget(resolveOptions(options));
 }
 
@@ -55,6 +55,8 @@ function resolveOptions(options: BnbChatOptions): ResolvedOptions {
   return {
     layout: options.container ? 'inline' : 'launcher',
     parent: options.container ? resolveParent(options.container) : requireBody(),
+    publicKey: requirePublicKey(options.publicKey),
+    baseUrl: normalizeBaseUrl(options.baseUrl),
     title: clean(options.title) ?? DEFAULT_TITLE,
     subtitle: clean(options.subtitle) ?? DEFAULT_SUBTITLE,
     placeholder: clean(options.placeholder) ?? DEFAULT_PLACEHOLDER,
@@ -90,6 +92,30 @@ function resolveParent(container: HTMLElement | string): HTMLElement {
     throw new Error(`BNB Chat: không tìm thấy phần tử "${container}".`);
   }
   return found;
+}
+
+function requirePublicKey(value: string | undefined): string {
+  const key = value?.trim() ?? '';
+  if (!key) throw new Error('BNB Chat: publicKey là bắt buộc.');
+  if (key.length > 200 || /[\s"'<>]/.test(key)) {
+    throw new Error('BNB Chat: publicKey không hợp lệ.');
+  }
+  return key;
+}
+
+function normalizeBaseUrl(value: string | undefined): string {
+  const raw = value?.trim() ?? '';
+  if (!raw) throw new Error('BNB Chat: baseUrl là bắt buộc.');
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error('BNB Chat: baseUrl không phải URL hợp lệ.');
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('BNB Chat: baseUrl phải bắt đầu bằng http:// hoặc https://.');
+  }
+  return url.origin;
 }
 
 function clean(value: string | undefined): string | null {

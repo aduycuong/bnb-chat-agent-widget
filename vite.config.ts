@@ -48,7 +48,7 @@ export default defineConfig(({ command }) => {
       rollupOptions: {
         output: {
           banner:
-            '/* BNB Chat widget. Load this file, then call BnbChat.init({ ... }). */',
+            '/* BNB Chat. BnbChat.init({ publicKey, baseUrl }) or data-public-key and data-base-url on this script. */',
         },
       },
     },

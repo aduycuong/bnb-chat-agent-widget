@@ -45,6 +45,10 @@ export type BnbChatIcons = {
 };
 
 export type BnbChatOptions = {
+  /** Public key của kênh embed. */
+  publicKey: string;
+  /** Origin của API, ví dụ https://dev.boxx.vn. Path bị bỏ. */
+  baseUrl: string;
   /** Phần tử hoặc selector. Có giá trị thì widget nằm inline trong đó. */
   container?: HTMLElement | string;
   title?: string;
@@ -75,6 +79,8 @@ export type BnbChatHandle = {
 export type ResolvedOptions = {
   layout: BnbChatLayout;
   parent: HTMLElement;
+  publicKey: string;
+  baseUrl: string;
   title: string;
   subtitle: string;
   placeholder: string;

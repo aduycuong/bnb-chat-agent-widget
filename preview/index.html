@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BNB Chat — embed preview</title>
+    <title>BNB Chat — hướng dẫn gắn widget</title>
     <style>
       :root {
         color-scheme: light;
@@ -20,8 +20,10 @@
         background-image: radial-gradient(#e4e4e7 1px, transparent 1px);
         background-size: 18px 18px;
       }
-      code {
+      code, pre {
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      code {
         font-size: 0.92em;
         background: #f4f4f5;
         border-radius: 6px;
@@ -44,15 +46,16 @@
         padding: 28px 440px 28px 28px;
       }
       .card {
-        width: min(640px, 100%);
+        width: min(760px, 100%);
         background: #fff;
         border: 1px solid #e4e4e7;
         border-radius: 18px;
         padding: 20px;
       }
-      h1, h2 { margin: 0 0 8px; letter-spacing: -0.03em; }
+      h1, h2, h3 { margin: 0 0 8px; letter-spacing: -0.03em; }
       h1 { font-size: 28px; }
-      h2 { font-size: 16px; }
+      h2 { font-size: 18px; }
+      h3 { margin-top: 18px; font-size: 14px; }
       .lead, .note { margin: 0 0 16px; color: #3f3f46; }
       .err { color: #b91c1c; font-weight: 600; }
       .controls {
@@ -95,13 +98,20 @@
         background: #fff;
       }
       pre {
-        margin: 0;
+        margin: 0 0 8px;
         padding: 12px;
         overflow: auto;
         border-radius: 12px;
         background: #18181b;
         color: #fafafa;
         font-size: 13px;
+        line-height: 1.45;
+      }
+      pre code {
+        background: transparent;
+        color: inherit;
+        padding: 0;
+        font-size: inherit;
       }
       @media (max-width: 860px) {
         .wrap { padding: 20px 16px 20px; }
@@ -111,23 +121,94 @@
   <body>
     <header class="top">
       <div class="brand">BNB Chat</div>
-      <div class="meta">Bản embed đã build</div>
+      <div class="meta">File build: bnb-chat.js</div>
     </header>
     <main class="wrap">
       <section class="card">
-        <h1>Script embed</h1>
+        <h1>Gắn widget</h1>
         <p class="lead">
-          Trang này tải <code>bnb-chat.js</code> rồi gọi <code>BnbChat.init()</code>. Tin gửi tới
-          agent trên <code>dev.boxx.vn</code>.
+          Build ra <code>bnb-chat.js</code>. Có hai cách khởi tạo. Cả hai đều cần
+          <code>publicKey</code> và <code>baseUrl</code> — hai giá trị này không nằm trong file script.
         </p>
         <p id="status" class="note">Đang kiểm tra <code>window.BnbChat</code>...</p>
+
+        <h2>Cách 1 — options trên thẻ script</h2>
+        <p class="note">
+          Gắn <code>data-public-key</code> và <code>data-base-url</code> thì script tự mount khi tải xong.
+          <code>data-mode</code> bỏ trống thì là popup. <code>async</code> được: widget đợi DOM sẵn sàng.
+        </p>
+        <h3>Popup</h3>
+        <pre><code>&lt;script
+  src="https://dev.boxx.vn/embed/bnb-chat.js"
+  data-public-key="HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw"
+  data-base-url="https://dev.boxx.vn"
+  data-mode="popup"
+  data-primary-color="#18181b"
+  data-position="bottom-right"
+  async
+&gt;&lt;/script&gt;</code></pre>
+        <p class="note">
+          <code>data-position</code> chỉ dùng cho popup: <code>bottom-right</code> hoặc
+          <code>bottom-left</code>. <code>data-primary-color</code> là màu nhấn <code>#rrggbb</code>.
+        </p>
+        <h3>Inline</h3>
+        <pre><code>&lt;div id="bnb-chat"&gt;&lt;/div&gt;
+&lt;script
+  src="https://dev.boxx.vn/embed/bnb-chat.js"
+  data-public-key="HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw"
+  data-base-url="https://dev.boxx.vn"
+  data-mode="inline"
+  data-target="bnb-chat"
+  data-primary-color="#18181b"
+  async
+&gt;&lt;/script&gt;</code></pre>
+        <p class="note">
+          <code>data-target</code> là id của phần tử, không cần dấu <code>#</code>.
+          Có <code>#</code>, <code>.</code> hoặc <code>[</code> thì coi là selector.
+        </p>
+
+        <h2>Cách 2 — gọi BnbChat.init()</h2>
+        <p class="note">
+          Thẻ script không có <code>data-public-key</code>. Trang tự gọi <code>init</code> sau khi file đã tải.
+          Có <code>container</code> thì là inline, không có thì là popup.
+        </p>
+        <pre><code>&lt;script src="https://dev.boxx.vn/embed/bnb-chat.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  var popup = BnbChat.init({
+    publicKey: 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw',
+    baseUrl: 'https://dev.boxx.vn',
+    primaryColor: '#18181b',
+    position: 'bottom-right'
+  });
+  var inline = BnbChat.init({
+    publicKey: 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw',
+    baseUrl: 'https://dev.boxx.vn',
+    container: '#bnb-chat',
+    primaryColor: '#18181b'
+  });
+  popup.open();
+  popup.close();
+&lt;/script&gt;</code></pre>
+        <p class="note">
+          Một trang có thể có cả hai mode. Script đã có <code>data-public-key</code> thì tự tạo một widget;
+          gọi thêm <code>init()</code> sẽ tạo widget thứ hai.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Demo trên trang này</h2>
+        <p class="note">
+          Thẻ script của trang này không gắn <code>data-*</code>, rồi gọi <code>BnbChat.init()</code>
+          cho popup và inline. Đổi màu hoặc vị trí sẽ gắn lại cả hai.
+          Tin gửi tới agent trên <code>dev.boxx.vn</code>.
+        </p>
         <div class="controls">
           <label>
             Màu chủ đạo
             <input id="color" type="color" value="#18181b" />
           </label>
           <label>
-            Vị trí nút nổi
+            Vị trí popup
             <select id="position">
               <option value="bottom-right">Góc phải</option>
               <option value="bottom-left">Góc trái</option>
@@ -136,17 +217,18 @@
           <button id="open" type="button">Mở hội thoại</button>
           <button id="close" class="ghost" type="button">Đóng</button>
         </div>
-        <pre>BnbChat.init({ primaryColor: '#18181b' })
-BnbChat.init({ container: '#inline-root' })</pre>
       </section>
+
       <section class="card stage-card">
-        <h2>Chế độ inline</h2>
-        <p class="note">Cùng file script, mount vào một phần tử có sẵn.</p>
+        <h2>Inline</h2>
+        <p class="note">Cùng lần gọi <code>init</code>, mount vào <code>#inline-root</code>.</p>
         <div id="inline-root"></div>
       </section>
     </main>
     <script src="./bnb-chat.js"></script>
     <script>
+      var PUBLIC_KEY = 'HfcVbu7VBNew-3JJd4xPSLNWaNGCpJaw';
+      var BASE_URL = 'https://dev.boxx.vn';
       var statusNode = document.querySelector('#status');
       var colorInput = document.querySelector('#color');
       var positionInput = document.querySelector('#position');
@@ -158,11 +240,17 @@ BnbChat.init({ container: '#inline-root' })</pre>
         if (inline) inline.destroy();
         var primaryColor = colorInput.value;
         var position = positionInput.value;
-        launcher = BnbChat.init({ primaryColor: primaryColor, position: position });
-        inline = BnbChat.init({
-          container: '#inline-root',
+        launcher = BnbChat.init({
+          publicKey: PUBLIC_KEY,
+          baseUrl: BASE_URL,
           primaryColor: primaryColor,
           position: position,
+        });
+        inline = BnbChat.init({
+          publicKey: PUBLIC_KEY,
+          baseUrl: BASE_URL,
+          container: '#inline-root',
+          primaryColor: primaryColor,
         });
       }
 
@@ -170,7 +258,7 @@ BnbChat.init({ container: '#inline-root' })</pre>
         statusNode.textContent = 'Không thấy window.BnbChat.init. Hãy chạy npm run build trước.';
         statusNode.className = 'err';
       } else {
-        statusNode.textContent = 'Đã gắn window.BnbChat.init từ bnb-chat.js.';
+        statusNode.textContent = 'Đã tải bnb-chat.js. Demo bên dưới dùng BnbChat.init().';
         colorInput.addEventListener('change', mount);
         positionInput.addEventListener('change', mount);
         document.querySelector('#open').addEventListener('click', function () {

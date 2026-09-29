@@ -245,7 +245,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   root.append(panel, launcher);
   shadow.append(style, root);
 
-  const visitorId = readVisitorId(options.layout);
+  const visitorId = readVisitorId(options.publicKey);
   const abort = new AbortController();
   let notificationSource: EventSource | null = null;
   let notificationTimer: number | null = null;
@@ -646,12 +646,12 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
 
   async function loadNotificationSession(): Promise<EmbedSession> {
     try {
-      return await loadEmbedSession(token, visitorId, abort.signal);
+      return await loadEmbedSession(token, visitorId, options.baseUrl, abort.signal);
     } catch (error) {
       if (!isEmbedTokenExpired(error) || abort.signal.aborted) throw error;
       const refreshed = await refreshSession(false);
       if (!refreshed || abort.signal.aborted) throw error;
-      return loadEmbedSession(token, visitorId, abort.signal);
+      return loadEmbedSession(token, visitorId, options.baseUrl, abort.signal);
     }
   }
 
@@ -659,7 +659,12 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     if (reconnecting || abort.signal.aborted) return false;
     reconnecting = true;
     try {
-      const boot = await bootstrapEmbed(visitorId, abort.signal);
+      const boot = await bootstrapEmbed({
+        publicKey: options.publicKey,
+        baseUrl: options.baseUrl,
+        visitorId,
+        signal: abort.signal,
+      });
       if (abort.signal.aborted) return false;
       adoptBootstrap(boot, true);
       return true;
@@ -740,12 +745,22 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
 
   async function clearMessages(): Promise<void> {
     try {
-      await clearEmbedMessages({ token, visitorId, signal: abort.signal });
+      await clearEmbedMessages({
+        baseUrl: options.baseUrl,
+        token,
+        visitorId,
+        signal: abort.signal,
+      });
     } catch (error) {
       if (!isEmbedTokenExpired(error) || abort.signal.aborted) throw error;
       const refreshed = await ensureFreshToken();
       if (!refreshed || abort.signal.aborted) throw error;
-      await clearEmbedMessages({ token, visitorId, signal: abort.signal });
+      await clearEmbedMessages({
+        baseUrl: options.baseUrl,
+        token,
+        visitorId,
+        signal: abort.signal,
+      });
     }
   }
 
@@ -778,16 +793,26 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     setPresence('busy');
     syncSend();
     try {
-      let boot = await bootstrapEmbed(visitorId, abort.signal);
+      let boot = await bootstrapEmbed({
+        publicKey: options.publicKey,
+        baseUrl: options.baseUrl,
+        visitorId,
+        signal: abort.signal,
+      });
       adoptBootstrap(boot, false);
       let session;
       try {
-        session = await loadEmbedSession(token, visitorId, abort.signal);
+        session = await loadEmbedSession(token, visitorId, options.baseUrl, abort.signal);
       } catch (error) {
         if (!isEmbedTokenExpired(error)) throw error;
-        boot = await bootstrapEmbed(visitorId, abort.signal);
+        boot = await bootstrapEmbed({
+          publicKey: options.publicKey,
+          baseUrl: options.baseUrl,
+          visitorId,
+          signal: abort.signal,
+        });
         adoptBootstrap(boot, false);
-        session = await loadEmbedSession(token, visitorId, abort.signal);
+        session = await loadEmbedSession(token, visitorId, options.baseUrl, abort.signal);
       }
       if (abort.signal.aborted) return false;
       if (!options.titleFromUser && session.agentName.trim()) {
@@ -889,6 +914,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   async function uploadDraft(item: DraftImage): Promise<void> {
     const run = () =>
       uploadEmbedImage({
+        baseUrl: options.baseUrl,
         token,
         visitorId,
         file: item.file,
@@ -994,6 +1020,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   async function deliver(text: string, images: EmbedOutgoingImage[]): Promise<void> {
     const draft = { text: '', body: null as MessageBody | null };
     const finalMessage = await streamEmbedMessage({
+      baseUrl: options.baseUrl,
       token,
       visitorId,
       message: text,

@@ -1,5 +1,3 @@
-import { EMBED_BASE_URL, EMBED_PUBLIC_KEY } from './config';
-
 export type EmbedRtdb = {
   streamUrl: string;
   authToken: string;
@@ -80,8 +78,8 @@ export class EmbedRequestError extends Error {
   }
 }
 
-export function readVisitorId(layout: string): string {
-  const key = `bnb-chat-visitor:${layout}`;
+export function readVisitorId(publicKey: string): string {
+  const key = `bnb-chat-visitor:${publicKey}`;
   try {
     const existing = localStorage.getItem(key);
     if (existing && isUuid(existing)) return existing;
@@ -108,15 +106,17 @@ export function embedErrorText(error: unknown): string {
   return 'Không kết nối được với trợ lý.';
 }
 
-export async function bootstrapEmbed(
-  visitorId: string,
-  signal?: AbortSignal,
-): Promise<EmbedBootstrap> {
-  const response = await fetch(endpoint('/api/embed/bootstrap'), {
+export async function bootstrapEmbed(params: {
+  publicKey: string;
+  baseUrl: string;
+  visitorId: string;
+  signal?: AbortSignal;
+}): Promise<EmbedBootstrap> {
+  const response = await fetch(endpoint(params.baseUrl, '/api/embed/bootstrap'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ publicKey: EMBED_PUBLIC_KEY, visitorId }),
-    signal,
+    body: JSON.stringify({ publicKey: params.publicKey, visitorId: params.visitorId }),
+    signal: params.signal,
   });
   if (!response.ok) throw await readError(response);
   return readBootstrap(await response.json());
@@ -125,9 +125,10 @@ export async function bootstrapEmbed(
 export async function loadEmbedSession(
   token: string,
   visitorId: string,
+  baseUrl: string,
   signal?: AbortSignal,
 ): Promise<EmbedSession> {
-  const url = new URL('/api/embed/session', EMBED_BASE_URL);
+  const url = new URL('/api/embed/session', baseUrl);
   url.searchParams.set('visitorId', visitorId);
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
@@ -156,13 +157,14 @@ export function embedImageContentType(file: File): string | null {
 }
 
 export async function uploadEmbedImage(params: {
+  baseUrl: string;
   token: string;
   visitorId: string;
   file: Blob;
   contentType: string;
   signal?: AbortSignal;
 }): Promise<{ url: string; key: string }> {
-  const response = await fetch(endpoint('/api/embed/images'), {
+  const response = await fetch(endpoint(params.baseUrl, '/api/embed/images'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -211,11 +213,12 @@ export type ClearEmbedMessagesResult = {
 };
 
 export async function clearEmbedMessages(params: {
+  baseUrl: string;
   token: string;
   visitorId: string;
   signal?: AbortSignal;
 }): Promise<ClearEmbedMessagesResult> {
-  const response = await fetch(endpoint('/api/embed/messages/clear'), {
+  const response = await fetch(endpoint(params.baseUrl, '/api/embed/messages/clear'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token: params.token, visitorId: params.visitorId }),
@@ -230,6 +233,7 @@ export async function clearEmbedMessages(params: {
 }
 
 export async function streamEmbedMessage(params: {
+  baseUrl: string;
   token: string;
   visitorId: string;
   message: string;
@@ -238,7 +242,7 @@ export async function streamEmbedMessage(params: {
   onToken: (content: string) => void;
   onSession?: (sessionId: string) => void;
 }): Promise<string> {
-  const response = await fetch(endpoint('/api/embed/messages'), {
+  const response = await fetch(endpoint(params.baseUrl, '/api/embed/messages'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -374,8 +378,8 @@ function readConversationStarters(value: unknown): string[] {
   return starters;
 }
 
-function endpoint(path: string): string {
-  return `${EMBED_BASE_URL}${path}`;
+function endpoint(baseUrl: string, path: string): string {
+  return `${baseUrl.replace(/\/+$/, '')}${path}`;
 }
 
 async function readError(response: Response): Promise<EmbedRequestError> {
