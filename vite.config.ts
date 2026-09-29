@@ -10,15 +10,28 @@ const shared = {
   preview: { port: 4173, strictPort: true },
 };
 
+function listPreviewFiles(dir: string): string[] {
+  const files: string[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...listPreviewFiles(full));
+    else files.push(full);
+  }
+  return files;
+}
+
 function emitEmbedPreview(): Plugin {
   return {
     name: 'bnb-embed-preview',
     generateBundle() {
-      this.emitFile({
-        type: 'asset',
-        fileName: 'index.html',
-        source: fs.readFileSync(path.join(root, 'preview/index.html')),
-      });
+      const dir = path.join(root, 'preview');
+      for (const file of listPreviewFiles(dir)) {
+        this.emitFile({
+          type: 'asset',
+          fileName: path.relative(dir, file).split(path.sep).join('/'),
+          source: fs.readFileSync(file),
+        });
+      }
     },
   };
 }
