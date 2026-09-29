@@ -5,6 +5,7 @@ export { init };
 export type {
   BnbChatHandle,
   BnbChatIcons,
+  BnbChatNotificationPayload,
   BnbChatOptions,
   BnbChatPosition,
   BnbChatTheme,

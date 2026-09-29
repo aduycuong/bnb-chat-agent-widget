@@ -57,6 +57,8 @@
         background: url("./sun.png") center / contain no-repeat;
         mix-blend-mode: screen;
         transform: translateX(-50%);
+        opacity: 1;
+        transition: opacity 900ms ease;
         animation: spin 180s linear infinite;
         -webkit-mask-image: radial-gradient(circle, #000 0%, #000 22%, transparent 56%);
         mask-image: radial-gradient(circle, #000 0%, #000 22%, transparent 56%);
@@ -107,6 +109,7 @@
         animation: rise 70s linear infinite;
       }
       .dust { inset: 0; z-index: 2; }
+      .stage.has-result .sun { opacity: 0.34; }
       .content {
         position: absolute;
         z-index: 3;
@@ -120,6 +123,7 @@
         padding: 0 24px;
         pointer-events: none;
       }
+      .stage.has-result .content { top: 3.2vh; }
       .kicker {
         margin: 0 0 14px;
         color: var(--gold);
@@ -135,7 +139,10 @@
         font-weight: 500;
         line-height: 0.86;
         letter-spacing: -0.03em;
+        transition: font-size 560ms ease;
       }
+      .stage.has-result h1 { font-size: clamp(34px, 5vw, 64px); }
+      .stage.has-result .kicker { margin-bottom: 8px; }
       h1 span {
         display: block;
       }
@@ -150,10 +157,18 @@
       .deck {
         max-width: 34rem;
         margin: 22px 0 0;
+        max-height: 5rem;
+        overflow: hidden;
         color: rgba(255, 246, 232, 0.78);
         font-size: clamp(15px, 2vw, 18px);
         font-weight: 300;
         letter-spacing: 0.04em;
+        transition: opacity 420ms ease, max-height 520ms ease, margin-top 520ms ease;
+      }
+      .stage.has-result .deck {
+        max-height: 0;
+        margin-top: 0;
+        opacity: 0;
       }
       .cta {
         position: relative;
@@ -183,6 +198,109 @@
         outline: 2px solid var(--light);
         outline-offset: 4px;
       }
+      .portrait {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 6px;
+      }
+      .portrait[hidden] { display: none; }
+      .portrait.is-in { animation: portrait-in 1s cubic-bezier(0.16, 1, 0.3, 1) both; }
+      .aura {
+        position: absolute;
+        z-index: 0;
+        left: 50%;
+        top: 8%;
+        width: 140%;
+        height: 72%;
+        transform: translateX(-50%);
+        background: radial-gradient(ellipse at center, rgba(228, 177, 90, 0.42), transparent 68%);
+        filter: blur(10px);
+        animation: aura 4.8s ease-in-out infinite alternate;
+      }
+      .frame {
+        position: relative;
+        z-index: 1;
+        width: auto;
+        height: min(52vh, 560px);
+        max-width: min(78vw, 380px);
+        aspect-ratio: 2 / 3;
+        padding: 8px;
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(243, 226, 188, 0.24), rgba(228, 177, 90, 0.06));
+        box-shadow:
+          0 0 0 1px rgba(228, 177, 90, 0.75),
+          0 28px 70px rgba(0, 0, 0, 0.55),
+          0 0 54px rgba(228, 177, 90, 0.28);
+        overflow: hidden;
+      }
+      .frame.is-ready { animation: float 7s ease-in-out 1.05s infinite alternate; }
+      .frame img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        border-radius: 15px;
+        background: #120e09;
+        opacity: 0;
+        transform: scale(1.045);
+        transition: opacity 720ms ease, transform 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .frame.is-ready img { opacity: 1; transform: none; }
+      .frame.is-loading::before {
+        content: "";
+        position: absolute;
+        inset: 8px;
+        border-radius: 15px;
+        background: linear-gradient(
+          110deg,
+          rgba(255, 246, 232, 0.04) 28%,
+          rgba(228, 177, 90, 0.24) 48%,
+          rgba(255, 246, 232, 0.04) 66%
+        );
+        background-size: 220% 100%;
+        animation: shimmer 1.35s ease-in-out infinite;
+      }
+      .sheen {
+        position: absolute;
+        inset: 8px;
+        border-radius: 15px;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      .frame.is-ready .sheen::after {
+        content: "";
+        position: absolute;
+        top: -20%;
+        bottom: -20%;
+        left: 0;
+        width: 34%;
+        background: linear-gradient(90deg, transparent, rgba(255, 246, 232, 0.48), transparent);
+        transform: translateX(-180%) skewX(-16deg);
+        animation: sheen 1.15s ease 0.18s 1 both;
+      }
+      .corner {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        border: 1.5px solid var(--gold-soft);
+        pointer-events: none;
+      }
+      .corner.tl { top: 14px; left: 14px; border-right: 0; border-bottom: 0; }
+      .corner.tr { top: 14px; right: 14px; border-left: 0; border-bottom: 0; }
+      .corner.bl { bottom: 14px; left: 14px; border-right: 0; border-top: 0; }
+      .corner.br { bottom: 14px; right: 14px; border-left: 0; border-top: 0; }
+      .portrait figcaption {
+        margin: 14px 0 0;
+        color: var(--gold);
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.42em;
+        text-transform: uppercase;
+      }
+      .stage.has-result .cta { margin-top: 18px; }
       @keyframes drift {
         from { transform: scale(1.06) translate3d(-1.2%, -0.6%, 0); }
         to { transform: scale(1.12) translate3d(1.4%, 1%, 0); }
@@ -200,15 +318,42 @@
         12% { opacity: 0.8; }
         to { transform: translate3d(18px, -70vh, 0); opacity: 0; }
       }
+      @keyframes portrait-in {
+        from { opacity: 0; transform: translateY(26px) scale(0.94); filter: blur(8px); }
+        to { opacity: 1; transform: none; filter: none; }
+      }
+      @keyframes float {
+        from { transform: translateY(0); }
+        to { transform: translateY(-7px); }
+      }
+      @keyframes sheen {
+        from { transform: translateX(-180%) skewX(-16deg); }
+        to { transform: translateX(420%) skewX(-16deg); }
+      }
+      @keyframes shimmer {
+        from { background-position: 120% 0; }
+        to { background-position: -120% 0; }
+      }
+      @keyframes aura {
+        from { opacity: 0.55; }
+        to { opacity: 1; }
+      }
       @media (max-height: 740px) {
         .content { top: 6vh; }
         h1 { font-size: clamp(48px, 8vw, 84px); }
+        .stage.has-result h1 { font-size: clamp(28px, 6vw, 46px); }
         .deck { margin-top: 12px; }
         .cta { margin-top: 20px; }
+        .stage.has-result .cta { margin-top: 12px; }
         .dune { height: 20vh; }
+        .frame { height: min(44vh, 340px); width: auto; }
+        .stage.has-result .content { top: 2.4vh; }
       }
       @media (prefers-reduced-motion: reduce) {
-        .sky, .sun, .settlement i, .dust i { animation: none; }
+        .sky, .sun, .settlement i, .dust i, .aura, .frame.is-loading::before { animation: none; }
+        .portrait.is-in, .frame.is-ready { animation: none; }
+        .frame.is-ready .sheen::after { animation: none; }
+        .frame img, h1, .deck, .sun { transition: none; }
       }
     </style>
   </head>
@@ -247,9 +392,23 @@
         />
       </svg>
       <main class="content">
-        <p class="kicker">Thành phố ánh sáng</p>
-        <h1><span>Sun Blanca</span><em>City</em></h1>
-        <p class="deck">Vàng sa mạc trên nền đen của vũ trụ.</p>
+        <div class="hero">
+          <p class="kicker">Thành phố ánh sáng</p>
+          <h1><span>Sun Blanca</span><em>City</em></h1>
+          <p class="deck">Vàng sa mạc trên nền đen của vũ trụ.</p>
+        </div>
+        <figure class="portrait" id="portrait" hidden aria-live="polite">
+          <div class="aura" aria-hidden="true"></div>
+          <div class="frame" id="portrait-frame">
+            <img id="result-image" alt="Hình biến hình Sun Blanca City" />
+            <span class="sheen" aria-hidden="true"></span>
+            <span class="corner tl" aria-hidden="true"></span>
+            <span class="corner tr" aria-hidden="true"></span>
+            <span class="corner bl" aria-hidden="true"></span>
+            <span class="corner br" aria-hidden="true"></span>
+          </div>
+          <figcaption id="portrait-caption">Đã biến hình</figcaption>
+        </figure>
         <div class="cta">
           <button id="bien-hinh" type="button" aria-expanded="false">Biến hình</button>
         </div>
@@ -306,15 +465,71 @@
         requestAnimationFrame(draw);
 
         var button = document.querySelector('#bien-hinh');
+        var stage = document.querySelector('.stage');
+        var portrait = document.querySelector('#portrait');
+        var frame = document.querySelector('#portrait-frame');
+        var resultImage = document.querySelector('#result-image');
+        var caption = document.querySelector('#portrait-caption');
+        var shownUrl = '';
+        var chat = null;
+        var root = null;
+
+        function safeImageUrl(value) {
+          try {
+            var url = new URL(value);
+            if (url.protocol !== 'https:' && url.protocol !== 'http:') return '';
+            return url.href;
+          } catch (error) {
+            return '';
+          }
+        }
+
+        function closeChatIfOpen() {
+          if (root && root.dataset.open === 'true' && chat) chat.close();
+        }
+
+        function presentResult(imageUrl) {
+          var safe = safeImageUrl(imageUrl);
+          if (!safe) return;
+          closeChatIfOpen();
+          if (safe === shownUrl) return;
+          shownUrl = safe;
+          caption.textContent = 'Đã biến hình';
+          stage.classList.add('has-result');
+          portrait.hidden = false;
+          portrait.classList.remove('is-in');
+          void portrait.offsetWidth;
+          portrait.classList.add('is-in');
+          frame.classList.remove('is-ready');
+          frame.classList.add('is-loading');
+          resultImage.onload = function () {
+            if (resultImage.getAttribute('src') !== safe) return;
+            frame.classList.remove('is-loading');
+            frame.classList.add('is-ready');
+          };
+          resultImage.onerror = function () {
+            if (resultImage.getAttribute('src') !== safe) return;
+            frame.classList.remove('is-loading');
+            caption.textContent = 'Không tải được hình';
+          };
+          resultImage.src = safe;
+          button.textContent = 'Biến hình lại';
+        }
+
         if (!window.BnbChat || typeof window.BnbChat.init !== 'function') return;
-        var chat = window.BnbChat.init({
+        chat = window.BnbChat.init({
           publicKey: 'ukBYP38IRldhDqwUhFV5mjYjAzAp2fkX',
           baseUrl: 'https://bnb-chat-agent.bienhinh.vn',
           primaryColor: '#e4b15a',
           position: 'bottom-right',
+          onNotification: function (payload) {
+            if (!payload || payload.event !== 'bienhinh_image_completed') return;
+            if (typeof payload.imageUrl !== 'string') return;
+            presentResult(payload.imageUrl.trim());
+          },
         });
         var host = document.querySelector('bnb-chat-host');
-        var root = host && host.shadowRoot && host.shadowRoot.querySelector('.root');
+        root = host && host.shadowRoot && host.shadowRoot.querySelector('.root');
         function sync() {
           button.setAttribute('aria-expanded', root && root.dataset.open === 'true' ? 'true' : 'false');
         }

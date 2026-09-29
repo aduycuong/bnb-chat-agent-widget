@@ -44,6 +44,12 @@ export type BnbChatIcons = {
   clearChat?: string;
 };
 
+/**
+ * Payload trên kênh notification. Object tùy ý do agent đẩy lên,
+ * ví dụ `{ event: "bienhinh_image_completed", imageUrl }`.
+ */
+export type BnbChatNotificationPayload = Record<string, unknown>;
+
 export type BnbChatOptions = {
   /** Public key của kênh embed. */
   publicKey: string;
@@ -68,6 +74,11 @@ export type BnbChatOptions = {
    * Truyền mảng rỗng để ẩn.
    */
   suggestions?: string[];
+  /**
+   * Nghe payload notification. Widget vẫn tự hiện tin `role: "assistant"`;
+   * callback này để trang chủ xử lý event riêng.
+   */
+  onNotification?: (payload: BnbChatNotificationPayload) => void;
 };
 
 export type BnbChatHandle = {
@@ -96,4 +107,5 @@ export type ResolvedOptions = {
   suggestionsFromUser: boolean;
   /** False khi không truyền title — widget lấy tên agent từ session. */
   titleFromUser: boolean;
+  onNotification?: (payload: BnbChatNotificationPayload) => void;
 };

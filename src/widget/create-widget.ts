@@ -184,7 +184,11 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   menuNew.append(icon('clearChat', 'icon-clear', 16), document.createTextNode('Xóa chat'));
   menuPanel.append(menuClose, menuNew);
   menu.append(menuToggle, menuPanel);
-  header.append(markWrap, titles, menu);
+  const headerClose = el('button', 'header-close');
+  headerClose.type = 'button';
+  headerClose.setAttribute('aria-label', 'Đóng trò chuyện');
+  headerClose.append(icon('close', 'icon-x', 18));
+  header.append(markWrap, titles, headerClose, menu);
 
   const thread = el('div', 'thread');
   const list = el('div', 'messages');
@@ -604,6 +608,14 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
         if (lastAssistantText() === message) return;
         appendMessage('assistant', message);
         syncSuggestions();
+      },
+      onPayload(payload) {
+        if (abort.signal.aborted || !options.onNotification) return;
+        try {
+          options.onNotification(payload);
+        } catch (error) {
+          console.error(error);
+        }
       },
       onAuthRevoked() {
         void refreshNotification(true);
@@ -1155,6 +1167,74 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     }
   }
 
+  const compactQuery = window.matchMedia(
+    '(max-width: 640px), (max-height: 480px) and (pointer: coarse)',
+  );
+  let scrollLock: {
+    htmlOverflow: string;
+    bodyOverflow: string;
+    bodyPosition: string;
+    bodyTop: string;
+    bodyLeft: string;
+    bodyRight: string;
+    bodyWidth: string;
+    scrollY: number;
+  } | null = null;
+
+  function isCompactPopup(): boolean {
+    return options.layout === 'launcher' && compactQuery.matches;
+  }
+
+  function setPageScrollLocked(locked: boolean): void {
+    if (locked) {
+      if (scrollLock) return;
+      const scrollY = window.scrollY;
+      scrollLock = {
+        htmlOverflow: document.documentElement.style.overflow,
+        bodyOverflow: document.body.style.overflow,
+        bodyPosition: document.body.style.position,
+        bodyTop: document.body.style.top,
+        bodyLeft: document.body.style.left,
+        bodyRight: document.body.style.right,
+        bodyWidth: document.body.style.width,
+        scrollY,
+      };
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.width = '100%';
+      return;
+    }
+    if (!scrollLock) return;
+    const saved = scrollLock;
+    scrollLock = null;
+    document.documentElement.style.overflow = saved.htmlOverflow;
+    document.body.style.overflow = saved.bodyOverflow;
+    document.body.style.position = saved.bodyPosition;
+    document.body.style.top = saved.bodyTop;
+    document.body.style.left = saved.bodyLeft;
+    document.body.style.right = saved.bodyRight;
+    document.body.style.width = saved.bodyWidth;
+    window.scrollTo(0, saved.scrollY);
+  }
+
+  function syncCompactFrame(): void {
+    const active = isCompactPopup() && isOpen;
+    panel.setAttribute('aria-modal', active ? 'true' : 'false');
+    const viewport = window.visualViewport;
+    if (!active || !viewport) {
+      panel.style.removeProperty('--bnb-vv-top');
+      panel.style.removeProperty('--bnb-vv-height');
+    } else {
+      panel.style.setProperty('--bnb-vv-top', `${viewport.offsetTop}px`);
+      panel.style.setProperty('--bnb-vv-height', `${viewport.height}px`);
+    }
+    setPageScrollLocked(active);
+  }
+
   function setOpen(next: boolean, focus: boolean): void {
     if (options.layout !== 'launcher') return;
     if (!next) setMenuOpen(false);
@@ -1164,6 +1244,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     panel.setAttribute('aria-hidden', next ? 'false' : 'true');
     launcher.setAttribute('aria-expanded', String(next));
     launcher.setAttribute('aria-label', next ? 'Đóng trò chuyện' : 'Mở trò chuyện');
+    syncCompactFrame();
     if (next) {
       stickToBottom = true;
       requestAnimationFrame(() => jumpToBottom());
@@ -1208,7 +1289,12 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     setOpen(false, false);
   }
 
+  compactQuery.addEventListener('change', syncCompactFrame);
+  window.visualViewport?.addEventListener('resize', syncCompactFrame);
+  window.visualViewport?.addEventListener('scroll', syncCompactFrame);
+
   launcher.addEventListener('click', () => setOpen(!isOpen, true));
+  headerClose.addEventListener('click', () => setOpen(false, true));
   menuToggle.addEventListener('click', () => setMenuOpen(!menuOpen));
   menuClose.addEventListener('click', () => {
     setMenuOpen(false);
@@ -1302,6 +1388,10 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       contentObserver.disconnect();
       if (scrollFrame) cancelAnimationFrame(scrollFrame);
       document.removeEventListener('pointerdown', onDocPointer, true);
+      compactQuery.removeEventListener('change', syncCompactFrame);
+      window.visualViewport?.removeEventListener('resize', syncCompactFrame);
+      window.visualViewport?.removeEventListener('scroll', syncCompactFrame);
+      setPageScrollLocked(false);
       host.remove();
     },
   };

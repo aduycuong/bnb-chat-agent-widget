@@ -292,6 +292,7 @@ export function openNotificationStream(
   notification: EmbedRtdb,
   handlers: {
     onMessage: (message: string) => void;
+    onPayload?: (payload: Record<string, unknown>) => void;
     onAuthRevoked: () => void;
   },
 ): EventSource {
@@ -305,10 +306,13 @@ export function openNotificationStream(
     if (!sawSnapshot) {
       sawSnapshot = true;
       appliedAt = record.updatedAt;
+      if (record.payload) handlers.onPayload?.(record.payload);
       return;
     }
-    if (!record.message || record.updatedAt <= appliedAt) return;
+    if (record.updatedAt <= appliedAt) return;
     appliedAt = record.updatedAt;
+    if (record.payload) handlers.onPayload?.(record.payload);
+    if (!record.message) return;
     handlers.onMessage(record.message);
   });
   source.addEventListener('auth_revoked', () => {
@@ -324,28 +328,36 @@ function openAuthedStream(stream: EmbedRtdb): EventSource {
   return new EventSource(url.toString());
 }
 
-function readNotificationPut(raw: string): { updatedAt: number; message: string | null } | null {
+function readNotificationPut(raw: string): {
+  updatedAt: number;
+  message: string | null;
+  payload: Record<string, unknown> | null;
+} | null {
   try {
     const body = JSON.parse(raw) as {
       path?: unknown;
       data?: {
         updatedAt?: unknown;
-        payload?: { role?: unknown; message?: unknown } | null;
+        payload?: unknown;
       } | null;
     };
     if (body.path !== '/') return null;
-    const payload = body.data?.payload;
-    const message =
-      payload?.role === 'assistant' && typeof payload.message === 'string'
-        ? payload.message.trim()
-        : '';
+    const rawPayload = body.data?.payload;
+    const payload = isPlainObject(rawPayload) ? rawPayload : null;
+    const text = payload?.message;
+    const message = payload?.role === 'assistant' && typeof text === 'string' ? text.trim() : '';
     return {
       updatedAt: typeof body.data?.updatedAt === 'number' ? body.data.updatedAt : 0,
       message: message || null,
+      payload,
     };
   } catch {
     return null;
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 const STARTER_MAX_COUNT = 6;

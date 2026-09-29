@@ -202,6 +202,27 @@ button {
   transform: scale(0.96);
 }
 
+.header-close {
+  display: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--bnb-header-text);
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.header-close:hover {
+  background: var(--bnb-accent-soft);
+}
+
+.header-close:active {
+  transform: scale(0.96);
+}
+
 .menu-panel {
   position: absolute;
   top: calc(100% + 8px);
@@ -899,6 +920,49 @@ button:focus-visible {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
+}
+
+@media (max-width: 640px), (max-height: 480px) and (pointer: coarse) {
+  :host(:not([data-layout="inline"])) .panel {
+    position: fixed;
+    top: var(--bnb-vv-top, 0px);
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: 100%;
+    height: var(--bnb-vv-height, 100dvh);
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overscroll-behavior: none;
+  }
+
+  :host(:not([data-layout="inline"])) .messages {
+    overscroll-behavior: none;
+  }
+
+  :host(:not([data-layout="inline"])) .root[data-open="true"] .launcher {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  :host(:not([data-layout="inline"])) .header {
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    padding-left: calc(16px + env(safe-area-inset-left, 0px));
+    padding-right: calc(12px + env(safe-area-inset-right, 0px));
+  }
+
+  :host(:not([data-layout="inline"])) .header-close {
+    display: grid;
+  }
+
+  :host(:not([data-layout="inline"])) .composer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    padding-left: calc(14px + env(safe-area-inset-left, 0px));
+    padding-right: calc(14px + env(safe-area-inset-right, 0px));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

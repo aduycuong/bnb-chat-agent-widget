@@ -11,13 +11,21 @@ import { createWidget } from './create-widget';
 import type {
   BnbChatHandle,
   BnbChatIcons,
+  BnbChatNotificationPayload,
   BnbChatOptions,
   BnbChatPosition,
   BnbChatTheme,
   ResolvedOptions,
 } from './types';
 
-export type { BnbChatHandle, BnbChatIcons, BnbChatOptions, BnbChatPosition, BnbChatTheme };
+export type {
+  BnbChatHandle,
+  BnbChatIcons,
+  BnbChatNotificationPayload,
+  BnbChatOptions,
+  BnbChatPosition,
+  BnbChatTheme,
+};
 
 export function init(options: BnbChatOptions): BnbChatHandle {
   return createWidget(resolveOptions(options));
@@ -75,6 +83,8 @@ function resolveOptions(options: BnbChatOptions): ResolvedOptions {
       .filter((item) => item.length > 0),
     suggestionsFromUser: options.suggestions !== undefined,
     titleFromUser: clean(options.title) !== null,
+    onNotification:
+      typeof options.onNotification === 'function' ? options.onNotification : undefined,
   };
 }
 
