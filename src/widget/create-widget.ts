@@ -15,12 +15,14 @@ import {
   streamEmbedMessage,
   uploadEmbedImage,
   type EmbedHistoryImage,
+  type EmbedHistoryMessage,
   type EmbedOutgoingImage,
   type EmbedBootstrap,
   type EmbedRtdb,
   type EmbedSession,
 } from './embed-api';
 import { appendLinkedImage, renderAssistantContent, safeHttpUrl, splitMessageImages } from './assistant-text';
+import { ICON_PATHS, type IconName } from './icons';
 import { widgetCss } from './styles';
 import type { BnbChatHandle, ResolvedOptions } from './types';
 
@@ -53,39 +55,29 @@ function svg(className: string, size: number, markup: string): SVGSVGElement {
   node.setAttribute('viewBox', '0 0 24 24');
   node.setAttribute('width', String(size));
   node.setAttribute('height', String(size));
+  node.setAttribute('fill', 'none');
   node.setAttribute('aria-hidden', 'true');
   node.classList.add(className);
   node.innerHTML = markup;
   return node;
 }
 
-const chatIcon = () =>
-  svg(
-    'icon-chat',
-    26,
-    '<path fill="currentColor" d="M12 4c4.4 0 8 3.1 8 7s-3.6 7-8 7c-.7 0-1.4-.1-2-.3L6 19.2l.9-2.4C5.1 15.6 4 13.4 4 11c0-3.9 3.6-7 8-7Z"/>',
-  );
-
-const closeIcon = (className: string, size: number) =>
-  svg(
-    className,
-    size,
-    '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/>',
-  );
-
-const sendIcon = () =>
-  svg(
-    'icon-send',
-    18,
-    '<path fill="currentColor" d="m4.5 11.2 14.2-6.1c.7-.3 1.4.4 1.1 1.1l-4.8 13.2c-.3.8-1.4.8-1.7 0l-2.2-5.3-5.6-2c-.8-.3-.9-1.4-.1-1.9Z"/>',
-  );
-
-const clipIcon = () =>
-  svg(
-    'icon-clip',
-    18,
-    '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
-  );
+function iconNode(markup: string, className: string, size: number): SVGSVGElement {
+  const trimmed = markup.trim();
+  if (trimmed.startsWith('<svg')) {
+    const wrap = document.createElement('div');
+    wrap.innerHTML = trimmed;
+    const found = wrap.querySelector('svg');
+    if (found) {
+      found.setAttribute('width', String(size));
+      found.setAttribute('height', String(size));
+      found.setAttribute('aria-hidden', 'true');
+      found.classList.add(className);
+      return found;
+    }
+  }
+  return svg(className, size, trimmed);
+}
 
 function clipFileName(name: string): string {
   const trimmed = name.trim() || 'image';
@@ -100,8 +92,9 @@ function applyHostChrome(host: HTMLElement, options: ResolvedOptions): void {
   host.style.overflow = 'visible';
   host.style.display = 'block';
   host.style.zIndex = String(options.zIndex);
-  host.style.setProperty('--bnb-primary', options.primaryColor);
-  host.style.setProperty('--bnb-on-primary', options.onPrimary);
+  for (const [name, value] of Object.entries(options.themeVars)) {
+    host.style.setProperty(name, value);
+  }
 
   if (options.layout === 'inline') {
     host.style.position = 'relative';
@@ -144,10 +137,19 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-modal', 'false');
 
+  function icon(name: IconName, className: string, size: number): SVGSVGElement {
+    return iconNode(options.icons[name] ?? ICON_PATHS[name], className, size);
+  }
+
   const header = el('header', 'header');
+  const markWrap = el('div', 'mark-wrap');
   const mark = el('div', 'mark');
   mark.setAttribute('aria-hidden', 'true');
   mark.textContent = 'B';
+  const online = el('span', 'online');
+  online.dataset.state = 'busy';
+  online.setAttribute('aria-hidden', 'true');
+  markWrap.append(mark, online);
   const titles = el('div', 'titles');
   const title = el('div', 'title');
   title.id = 'bnb-title';
@@ -157,16 +159,46 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   titles.append(title, subtitle);
   panel.setAttribute('aria-labelledby', title.id);
 
-  const close = el('button', 'close');
-  close.type = 'button';
-  close.setAttribute('aria-label', 'Đóng trò chuyện');
-  close.append(closeIcon('icon-x', 18));
-  header.append(mark, titles, close);
+  const menu = el('div', 'menu');
+  const menuToggle = el('button', 'menu-toggle');
+  menuToggle.type = 'button';
+  menuToggle.setAttribute('aria-label', 'Tùy chọn');
+  menuToggle.setAttribute('aria-haspopup', 'menu');
+  menuToggle.setAttribute('aria-expanded', 'false');
+  menuToggle.setAttribute('aria-controls', 'bnb-menu');
+  menuToggle.append(icon('menu', 'icon-menu', 20));
+  const menuPanel = el('div', 'menu-panel');
+  menuPanel.id = 'bnb-menu';
+  menuPanel.setAttribute('role', 'menu');
+  menuPanel.inert = true;
+  const menuClose = el('button', 'menu-item');
+  menuClose.type = 'button';
+  menuClose.dataset.action = 'close';
+  menuClose.setAttribute('role', 'menuitem');
+  menuClose.append(icon('close', 'icon-x', 16), document.createTextNode('Đóng'));
+  const menuNew = el('button', 'menu-item');
+  menuNew.type = 'button';
+  menuNew.dataset.action = 'new-session';
+  menuNew.setAttribute('role', 'menuitem');
+  menuNew.append(icon('newSession', 'icon-new', 16), document.createTextNode('Phiên mới'));
+  menuPanel.append(menuClose, menuNew);
+  menu.append(menuToggle, menuPanel);
+  header.append(markWrap, titles, menu);
 
+  const thread = el('div', 'thread');
   const list = el('div', 'messages');
   list.setAttribute('role', 'log');
   list.setAttribute('aria-live', 'polite');
   list.setAttribute('aria-relevant', 'additions');
+  const feed = el('div', 'messages-inner');
+  list.append(feed);
+  const scrollEnd = el('button', 'scroll-end');
+  scrollEnd.type = 'button';
+  scrollEnd.setAttribute('aria-label', 'Xuống cuối');
+  scrollEnd.setAttribute('aria-hidden', 'true');
+  scrollEnd.tabIndex = -1;
+  scrollEnd.append(icon('scrollDown', 'icon-down', 18));
+  thread.append(list, scrollEnd);
 
   const suggestions = el('div', 'suggestions');
   const form = el('form', 'composer');
@@ -174,11 +206,11 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   attachments.hidden = true;
   attachments.setAttribute('role', 'list');
   attachments.setAttribute('aria-label', 'Ảnh đính kèm');
-  const row = el('div', 'composer-row');
+  const field = el('div', 'composer-field');
   const attach = el('button', 'attach');
   attach.type = 'button';
   attach.setAttribute('aria-label', 'Đính kèm ảnh');
-  attach.append(clipIcon());
+  attach.append(icon('image', 'icon-image', 20));
   const fileInput = el('input');
   fileInput.type = 'file';
   fileInput.className = 'sr-only';
@@ -198,17 +230,17 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   send.type = 'submit';
   send.disabled = true;
   send.setAttribute('aria-label', 'Gửi');
-  send.append(sendIcon());
-  row.append(attach, fileInput, label, textarea, send);
-  form.append(attachments, row);
+  send.append(icon('send', 'icon-send', 16));
+  field.append(attach, textarea, send);
+  form.append(attachments, field, fileInput, label);
 
   const launcher = el('button', 'launcher');
   launcher.type = 'button';
   launcher.setAttribute('aria-label', 'Mở trò chuyện');
   launcher.setAttribute('aria-expanded', 'false');
-  launcher.append(chatIcon(), closeIcon('icon-close', 26));
+  launcher.append(icon('launcher', 'icon-chat', 26), icon('close', 'icon-close', 26));
 
-  panel.append(header, list, suggestions, form);
+  panel.append(header, thread, suggestions, form);
   root.append(panel, launcher);
   shadow.append(style, root);
 
@@ -228,7 +260,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   let connectTask: Promise<boolean> | null = null;
   let tokenRefresh: Promise<boolean> | null = null;
 
-  const typing = el('div', 'msg assistant');
+  const typing = el('div', 'msg assistant typing-row');
   typing.setAttribute('role', 'status');
   typing.setAttribute('aria-label', 'Đang trả lời');
   const typingAvatar = el('div', 'avatar');
@@ -278,9 +310,74 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   typingBubble.append(el('span'), el('span'), el('span'));
   typing.append(typingAvatar, typingBubble);
 
-  function scrollToEnd(): void {
-    list.scrollTop = list.scrollHeight;
+  const STICK_GAP = 72;
+  let stickToBottom = true;
+  let scrollingByCode = false;
+  let menuOpen = false;
+  let lastDayKey = '';
+
+  function distanceFromBottom(): number {
+    return list.scrollHeight - list.scrollTop - list.clientHeight;
   }
+
+  function syncScrollButton(): void {
+    const show = distanceFromBottom() > STICK_GAP;
+    scrollEnd.dataset.show = show ? 'true' : 'false';
+    scrollEnd.setAttribute('aria-hidden', show ? 'false' : 'true');
+    scrollEnd.tabIndex = show ? 0 : -1;
+  }
+
+  function jumpToBottom(): void {
+    scrollingByCode = true;
+    list.scrollTop = list.scrollHeight;
+    scrollingByCode = false;
+    syncScrollButton();
+  }
+
+  function scrollToEnd(): void {
+    if (!stickToBottom) {
+      syncScrollButton();
+      return;
+    }
+    jumpToBottom();
+  }
+
+  function setPresence(state: 'online' | 'busy' | 'offline'): void {
+    online.dataset.state = state;
+  }
+
+  function onDocPointer(event: Event): void {
+    if (event.composedPath().includes(menu)) return;
+    setMenuOpen(false);
+  }
+
+  function setMenuOpen(next: boolean): void {
+    if (menuOpen === next) return;
+    menuOpen = next;
+    menu.dataset.open = next ? 'true' : 'false';
+    menuToggle.setAttribute('aria-expanded', String(next));
+    menuPanel.inert = !next;
+    if (next) {
+      document.addEventListener('pointerdown', onDocPointer, true);
+      const item = [...menuPanel.querySelectorAll<HTMLButtonElement>('.menu-item')].find(
+        (entry) => entry.offsetParent !== null,
+      );
+      item?.focus();
+      return;
+    }
+    document.removeEventListener('pointerdown', onDocPointer, true);
+  }
+
+  let scrollFrame = 0;
+  const contentObserver = new ResizeObserver(() => {
+    if (scrollFrame) return;
+    scrollFrame = requestAnimationFrame(() => {
+      scrollFrame = 0;
+      if (stickToBottom) jumpToBottom();
+      else syncScrollButton();
+    });
+  });
+  contentObserver.observe(feed);
 
   function syncSuggestions(): void {
     const visible = !hasUser && starterItems.length > 0;
@@ -289,7 +386,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
 
   function syncTyping(): void {
     typing.remove();
-    if (pending > 0) list.append(typing);
+    if (pending > 0) feed.append(typing);
     scrollToEnd();
   }
 
@@ -301,7 +398,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   };
 
   function appendImages(
-    bubble: HTMLElement,
+    parent: HTMLElement,
     images: EmbedHistoryImage[] | undefined,
     seen: Set<string>,
   ): void {
@@ -309,46 +406,129 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       const src = safeHttpUrl(image.url);
       if (!src || seen.has(src)) continue;
       seen.add(src);
-      appendLinkedImage(bubble, src, image.fileName?.trim() || '');
+      appendLinkedImage(parent, src, image.fileName?.trim() || '', scrollToEnd);
     }
+  }
+
+  function startOfDay(date: Date): number {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  }
+
+  function dayLabel(date: Date): string {
+    const diff = Math.round((startOfDay(new Date()) - startOfDay(date)) / 86_400_000);
+    if (diff === 0) return 'Hôm nay';
+    if (diff === 1) return 'Hôm qua';
+    const sameYear = date.getFullYear() === new Date().getFullYear();
+    return date.toLocaleDateString('vi-VN', {
+      day: 'numeric',
+      month: 'short',
+      ...(sameYear ? {} : { year: 'numeric' }),
+    });
+  }
+
+  function ensureDay(at: number): void {
+    const date = new Date(at);
+    const key = String(startOfDay(date));
+    if (key === lastDayKey) return;
+    lastDayKey = key;
+    const chip = el('div', 'day');
+    const label = el('span');
+    label.textContent = dayLabel(date);
+    chip.append(label);
+    feed.append(chip);
+  }
+
+  function stamp(at: number): HTMLTimeElement {
+    const node = document.createElement('time');
+    node.className = 'stamp';
+    const date = new Date(at);
+    node.dateTime = date.toISOString();
+    node.textContent = date.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+    return node;
   }
 
   function appendMessage(
     role: 'user' | 'assistant',
     text: string,
-    extras?: { error?: boolean; images?: EmbedHistoryImage[]; live?: boolean },
+    extras?: { error?: boolean; images?: EmbedHistoryImage[]; live?: boolean; at?: number },
   ): MessageBody {
+    const at = extras?.at ?? Date.now();
+    ensureDay(at);
     const row = el('div', `msg ${role}`);
     if (role === 'assistant') {
       const avatar = el('div', 'avatar');
       avatar.setAttribute('aria-hidden', 'true');
       paintAvatar(avatar);
       row.append(avatar);
+      const name = title.textContent?.trim();
+      if (name) {
+        const nameNode = el('div', 'bubble-name');
+        nameNode.textContent = name;
+        row.dataset.name = name;
+      }
     }
     const parsed = role === 'user' ? splitMessageImages(text) : { text, images: [] as { src: string; alt: string }[] };
     const seen = new Set(parsed.images.map((image) => image.src));
     const bubble = el('div', extras?.error ? 'bubble error' : 'bubble');
-    if (!parsed.text.trim() && (seen.size > 0 || (extras?.images?.length ?? 0) > 0)) bubble.classList.add('media');
+    const hasMedia = seen.size > 0 || (extras?.images?.length ?? 0) > 0;
+    if (hasMedia) bubble.classList.add('has-media');
     bubble.dir = 'auto';
     const who = el('span', 'sr-only');
     who.textContent = role === 'user' ? 'Bạn: ' : 'Trợ lý: ';
+    const main = el('div', 'bubble-main');
+    const content = el('div', 'bubble-content');
+    const time = stamp(at);
+    content.append(who);
+
+    function placeStamp(): void {
+      if (content.querySelector(':scope > .media-frame')) {
+        content.append(time);
+        return;
+      }
+      const rich = content.querySelector(':scope > .rich');
+      if (!rich) {
+        content.append(time);
+        return;
+      }
+      let last: Element | null = rich.lastElementChild;
+      if (last && (last.tagName === 'UL' || last.tagName === 'OL')) last = last.lastElementChild;
+      if (last instanceof HTMLParagraphElement || last instanceof HTMLLIElement) {
+        last.append(time);
+        return;
+      }
+      rich.append(time);
+    }
+
+    main.append(content);
+    if (role === 'assistant' && row.dataset.name) {
+      const nameNode = el('div', 'bubble-name');
+      nameNode.textContent = row.dataset.name;
+      bubble.append(nameNode);
+    }
+    bubble.append(main);
 
     if (role === 'assistant' && !extras?.error) {
       const rich = el('div', 'rich');
-      bubble.append(who, rich);
-      appendImages(bubble, extras?.images, seen);
+      content.append(rich);
+      appendImages(content, extras?.images, seen);
       row.append(bubble);
-      list.append(row);
+      feed.append(row);
       const showPlain = (next: string): void => {
         assistantSource.set(bubble, next);
         rich.classList.add('live');
         rich.replaceChildren(document.createTextNode(next));
+        placeStamp();
       };
       const showRich = (next: string): void => {
         assistantSource.set(bubble, next);
         rich.classList.remove('live');
         rich.replaceChildren();
         renderAssistantContent(rich, next);
+        placeStamp();
       };
       if (extras?.live) showPlain(text);
       else showRich(text);
@@ -357,11 +537,12 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     }
 
     const textNode = document.createTextNode(parsed.text);
-    bubble.append(who, textNode);
-    for (const image of parsed.images) appendLinkedImage(bubble, image.src, image.alt);
-    appendImages(bubble, extras?.images, seen);
+    content.append(textNode);
+    for (const image of parsed.images) appendLinkedImage(content, image.src, image.alt, scrollToEnd);
+    appendImages(content, extras?.images, seen);
+    placeStamp();
     row.append(bubble);
-    list.append(row);
+    feed.append(row);
     if (role === 'user') hasUser = true;
     syncTyping();
     return {
@@ -494,8 +675,21 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     return connectTask;
   }
 
+  function messageTime(message: EmbedHistoryMessage): number {
+    const value = message.createdAt;
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value < 1e12 ? value * 1000 : value;
+    }
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Date.parse(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return Date.now();
+  }
+
   async function openSession(): Promise<boolean> {
     subtitle.textContent = 'Đang kết nối...';
+    setPresence('busy');
     syncSend();
     try {
       let boot = await bootstrapEmbed(visitorId, abort.signal);
@@ -518,7 +712,10 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       }
       if (session.messages.length > 0) {
         for (const message of session.messages) {
-          appendMessage(message.role, message.content, { images: message.images });
+          appendMessage(message.role, message.content, {
+            images: message.images,
+            at: messageTime(message),
+          });
         }
       } else if (session.firstMessage?.trim()) {
         appendMessage('assistant', session.firstMessage.trim());
@@ -529,10 +726,12 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       else syncSuggestions();
       ready = true;
       subtitle.textContent = options.subtitle;
+      setPresence('online');
       return true;
     } catch (error) {
       if (!abort.signal.aborted) {
         subtitle.textContent = 'Chưa kết nối';
+        setPresence('offline');
         showError(error);
       }
       return false;
@@ -682,7 +881,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     const remove = el('button', 'attachment-remove');
     remove.type = 'button';
     remove.setAttribute('aria-label', `Bỏ ${item.name}`);
-    remove.append(closeIcon('icon-x', 14));
+    remove.append(icon('close', 'icon-x', 14));
     remove.addEventListener('click', () => removeDraft(item));
     item.node.append(picture, meta, remove);
     attachments.hidden = false;
@@ -751,10 +950,13 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
 
   function resizeInput(): void {
     textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 96)}px`;
+    const next = Math.min(textarea.scrollHeight, 96);
+    textarea.style.height = `${next}px`;
+    field.classList.toggle('multiline', next > 44);
   }
 
   async function postTurn(text: string, images: EmbedOutgoingImage[]): Promise<void> {
+    stickToBottom = true;
     hasUser = true;
     syncSuggestions();
     appendMessage('user', text, { images });
@@ -856,12 +1058,17 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
 
   function setOpen(next: boolean, focus: boolean): void {
     if (options.layout !== 'launcher') return;
+    if (!next) setMenuOpen(false);
     isOpen = next;
     root.dataset.open = next ? 'true' : 'false';
     panel.inert = !next;
     panel.setAttribute('aria-hidden', next ? 'false' : 'true');
     launcher.setAttribute('aria-expanded', String(next));
     launcher.setAttribute('aria-label', next ? 'Đóng trò chuyện' : 'Mở trò chuyện');
+    if (next) {
+      stickToBottom = true;
+      requestAnimationFrame(() => jumpToBottom());
+    }
     if (!focus) return;
     if (next) textarea.focus();
     else launcher.focus();
@@ -903,9 +1110,57 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   }
 
   launcher.addEventListener('click', () => setOpen(!isOpen, true));
-  close.addEventListener('click', () => setOpen(false, true));
+  menuToggle.addEventListener('click', () => setMenuOpen(!menuOpen));
+  menuClose.addEventListener('click', () => {
+    setMenuOpen(false);
+    setOpen(false, true);
+  });
+  menuNew.addEventListener('click', () => {
+    setMenuOpen(false);
+    menuToggle.focus();
+    host.dispatchEvent(new CustomEvent('bnb-chat:new-session', { bubbles: true, composed: true }));
+  });
+  let userMoved = false;
+  const noteUserScroll = (): void => {
+    userMoved = true;
+    scrollingByCode = false;
+  };
+  list.addEventListener('wheel', noteUserScroll, { passive: true });
+  list.addEventListener('touchmove', noteUserScroll, { passive: true });
+  list.addEventListener('pointerdown', noteUserScroll);
+  list.addEventListener(
+    'scroll',
+    () => {
+      const distance = distanceFromBottom();
+      if (userMoved) {
+        stickToBottom = distance < STICK_GAP;
+        userMoved = false;
+      } else if (distance < STICK_GAP) {
+        stickToBottom = true;
+      }
+      if (scrollingByCode && distance < 2) scrollingByCode = false;
+      syncScrollButton();
+    },
+    { passive: true },
+  );
+  scrollEnd.addEventListener('click', () => {
+    stickToBottom = true;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      jumpToBottom();
+      return;
+    }
+    scrollingByCode = true;
+    list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+  });
   root.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') setOpen(false, true);
+    if (event.key !== 'Escape') return;
+    if (menuOpen) {
+      setMenuOpen(false);
+      menuToggle.focus();
+      return;
+    }
+    setOpen(false, true);
   });
   textarea.addEventListener('input', () => {
     resizeInput();
@@ -945,6 +1200,9 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       notificationSource?.close();
       notificationSource = null;
       clearNotificationTimer();
+      contentObserver.disconnect();
+      if (scrollFrame) cancelAnimationFrame(scrollFrame);
+      document.removeEventListener('pointerdown', onDocPointer, true);
       host.remove();
     },
   };

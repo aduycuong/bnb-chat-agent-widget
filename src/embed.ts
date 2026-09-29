@@ -1,2 +1,8 @@
 export { init } from './widget/init';
-export type { BnbChatHandle, BnbChatOptions, BnbChatPosition } from './widget/types';
+export type {
+  BnbChatHandle,
+  BnbChatIcons,
+  BnbChatOptions,
+  BnbChatPosition,
+  BnbChatTheme,
+} from './widget/types';

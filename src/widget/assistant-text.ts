@@ -1,3 +1,5 @@
+import { createMediaFrame } from './media';
+
 /** Định dạng tối thiểu cho tin trợ lý. Chỉ tạo text, strong, em, a, img, br, p, ul, ol, li. */
 
 export function safeHttpUrl(value: string): string | null {
@@ -298,20 +300,13 @@ function unwrapMarkdownUrl(value: string): string {
   return trimmed;
 }
 
-export function appendLinkedImage(parent: ParentNode, src: string, alt: string): void {
-  const link = document.createElement('a');
-  link.className = 'image-link';
-  link.href = src;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  const picture = document.createElement('img');
-  picture.src = src;
-  picture.alt = alt;
-  picture.loading = 'lazy';
-  picture.decoding = 'async';
-  picture.referrerPolicy = 'no-referrer';
-  link.append(picture);
-  parent.append(link);
+export function appendLinkedImage(
+  parent: ParentNode,
+  src: string,
+  alt: string,
+  onSettle?: () => void,
+): void {
+  parent.append(createMediaFrame({ kind: 'image', src, alt, onSettle }));
 }
 
 export function splitMessageImages(source: string): { text: string; images: { src: string; alt: string }[] } {

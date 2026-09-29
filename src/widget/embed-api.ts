@@ -31,6 +31,11 @@ export type EmbedHistoryMessage = {
   role: 'user' | 'assistant';
   content: string;
   images?: EmbedHistoryImage[];
+  /**
+   * Thời điểm tin được tạo. ISO 8601 hoặc epoch (giây hoặc millisecond).
+   * Không có, hoặc không đọc được, thì widget dùng ngày hiện tại.
+   */
+  createdAt?: string | number;
 };
 
 export type EmbedSession = {
