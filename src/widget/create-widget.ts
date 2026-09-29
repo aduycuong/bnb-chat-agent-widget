@@ -6,6 +6,7 @@ import {
 } from './config';
 import {
   bootstrapEmbed,
+  clearEmbedMessages,
   embedErrorText,
   embedImageContentType,
   isEmbedTokenExpired,
@@ -180,7 +181,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   menuNew.type = 'button';
   menuNew.dataset.action = 'new-session';
   menuNew.setAttribute('role', 'menuitem');
-  menuNew.append(icon('newSession', 'icon-new', 16), document.createTextNode('Phiên mới'));
+  menuNew.append(icon('clearChat', 'icon-clear', 16), document.createTextNode('Xóa chat'));
   menuPanel.append(menuClose, menuNew);
   menu.append(menuToggle, menuPanel);
   header.append(markWrap, titles, menu);
@@ -255,6 +256,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   let hasUser = false;
   let ready = false;
   let sending = false;
+  let restarting = false;
   let reconnecting = false;
   let isOpen = options.layout === 'inline';
   let connectTask: Promise<boolean> | null = null;
@@ -380,7 +382,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   contentObserver.observe(feed);
 
   function syncSuggestions(): void {
-    const visible = !hasUser && starterItems.length > 0;
+    const visible = !restarting && !hasUser && starterItems.length > 0;
     suggestions.hidden = !visible;
   }
 
@@ -572,10 +574,12 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     const hasText = textarea.value.trim().length > 0;
     const hasDraft = drafts.length > 0;
     const hasError = drafts.some((item) => item.state === 'error');
-    send.disabled = !ready || sending || hasError || (!hasText && !hasDraft);
-    textarea.disabled = !ready || sending;
-    attach.disabled = !ready || sending || drafts.length >= EMBED_IMAGE_MAX_COUNT;
+    const busy = sending || restarting;
+    send.disabled = !ready || busy || hasError || (!hasText && !hasDraft);
+    textarea.disabled = !ready || busy;
+    attach.disabled = !ready || busy || drafts.length >= EMBED_IMAGE_MAX_COUNT;
     fileInput.disabled = attach.disabled;
+    menuNew.disabled = !ready || busy;
   }
 
   function focusInput(): void {
@@ -687,6 +691,88 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     return Date.now();
   }
 
+  let greeting = '';
+
+  function renderHistory(session: EmbedSession): void {
+    greeting = session.firstMessage?.trim() ?? '';
+    pending = 0;
+    hasUser = false;
+    lastDayKey = '';
+    stickToBottom = true;
+    feed.replaceChildren();
+    if (session.messages.length > 0) {
+      for (const message of session.messages) {
+        appendMessage(message.role, message.content, {
+          images: message.images,
+          at: messageTime(message),
+        });
+      }
+    } else if (greeting) {
+      appendMessage('assistant', greeting);
+    }
+    sessionId = session.sessionId;
+    bindNotification(session.notification ?? null);
+    syncSuggestions();
+    syncTyping();
+    jumpToBottom();
+  }
+
+  function clearThread(): void {
+    pending = 0;
+    hasUser = false;
+    lastDayKey = '';
+    stickToBottom = true;
+    notificationSource?.close();
+    notificationSource = null;
+    clearNotificationTimer();
+    feed.replaceChildren();
+    syncSuggestions();
+    syncTyping();
+  }
+
+  function discardComposer(): void {
+    dropDrafts();
+    attachments.replaceChildren();
+    attachments.hidden = true;
+    textarea.value = '';
+    resizeInput();
+  }
+
+  async function clearMessages(): Promise<void> {
+    try {
+      await clearEmbedMessages({ token, visitorId, signal: abort.signal });
+    } catch (error) {
+      if (!isEmbedTokenExpired(error) || abort.signal.aborted) throw error;
+      const refreshed = await ensureFreshToken();
+      if (!refreshed || abort.signal.aborted) throw error;
+      await clearEmbedMessages({ token, visitorId, signal: abort.signal });
+    }
+  }
+
+  async function restartChat(): Promise<void> {
+    if (restarting || sending || !ready || abort.signal.aborted) return;
+    restarting = true;
+    syncSend();
+    syncSuggestions();
+    try {
+      await clearMessages();
+      if (abort.signal.aborted) return;
+      discardComposer();
+      clearThread();
+      const session = await loadNotificationSession();
+      if (abort.signal.aborted) return;
+      renderHistory(session);
+      host.dispatchEvent(new CustomEvent('bnb-chat:new-session', { bubbles: true, composed: true }));
+    } catch (error) {
+      if (!abort.signal.aborted) showError(error);
+    } finally {
+      restarting = false;
+      syncSend();
+      syncSuggestions();
+      focusInput();
+    }
+  }
+
   async function openSession(): Promise<boolean> {
     subtitle.textContent = 'Đang kết nối...';
     setPresence('busy');
@@ -704,24 +790,10 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
         session = await loadEmbedSession(token, visitorId, abort.signal);
       }
       if (abort.signal.aborted) return false;
-      list.querySelectorAll('.bubble.error').forEach((bubble) => {
-        bubble.closest('.msg')?.remove();
-      });
       if (!options.titleFromUser && session.agentName.trim()) {
         title.textContent = session.agentName.trim();
       }
-      if (session.messages.length > 0) {
-        for (const message of session.messages) {
-          appendMessage(message.role, message.content, {
-            images: message.images,
-            at: messageTime(message),
-          });
-        }
-      } else if (session.firstMessage?.trim()) {
-        appendMessage('assistant', session.firstMessage.trim());
-      }
-      sessionId = session.sessionId;
-      bindNotification(session.notification ?? null);
+      renderHistory(session);
       if (!options.suggestionsFromUser) setStarters(boot.conversationStarters);
       else syncSuggestions();
       ready = true;
@@ -983,7 +1055,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
 
   async function sendText(raw: string): Promise<void> {
     const text = raw.trim();
-    if (!text || sending) return;
+    if (!text || sending || restarting) return;
     if (text.length > EMBED_MESSAGE_MAX_LENGTH) {
       appendMessage('assistant', `Tin nhắn dài quá ${EMBED_MESSAGE_MAX_LENGTH} ký tự.`, {
         error: true,
@@ -992,7 +1064,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     }
 
     const connected = await connect();
-    if (!connected || sending || abort.signal.aborted) return;
+    if (!connected || sending || restarting || abort.signal.aborted) return;
 
     sending = true;
     textarea.value = '';
@@ -1008,7 +1080,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
 
   async function sendComposer(): Promise<void> {
     const text = textarea.value.trim();
-    if (sending) return;
+    if (sending || restarting) return;
     if (!text && drafts.length === 0) return;
     if (text.length > EMBED_MESSAGE_MAX_LENGTH) {
       appendMessage('assistant', `Tin nhắn dài quá ${EMBED_MESSAGE_MAX_LENGTH} ký tự.`, {
@@ -1019,7 +1091,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     if (drafts.some((item) => item.state === 'error')) return;
 
     const connected = await connect();
-    if (!connected || sending || abort.signal.aborted) return;
+    if (!connected || sending || restarting || abort.signal.aborted) return;
 
     sending = true;
     const batch = drafts.slice();
@@ -1118,7 +1190,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
   menuNew.addEventListener('click', () => {
     setMenuOpen(false);
     menuToggle.focus();
-    host.dispatchEvent(new CustomEvent('bnb-chat:new-session', { bubbles: true, composed: true }));
+    void restartChat();
   });
   let userMoved = false;
   const noteUserScroll = (): void => {

@@ -41,7 +41,7 @@ export type BnbChatIcons = {
   image?: string;
   menu?: string;
   scrollDown?: string;
-  newSession?: string;
+  clearChat?: string;
 };
 
 export type BnbChatOptions = {

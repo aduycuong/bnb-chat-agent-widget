@@ -12,8 +12,8 @@ export const ICON_PATHS = {
     '<path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M5 9h14M5 15h14"/>',
   scrollDown:
     '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/>',
-  newSession:
-    '<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 6v12M6 12h12"/>',
+  clearChat:
+    '<path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="m7 21-4.3-4.3a2.4 2.4 0 0 1 0-3.4l9.6-9.6a2.4 2.4 0 0 1 3.4 0l5.6 5.6a2.4 2.4 0 0 1 0 3.4L13 21"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M22 21H7"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="m5 11 9 9"/>',
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;

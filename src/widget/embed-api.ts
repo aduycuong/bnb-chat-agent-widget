@@ -205,6 +205,30 @@ export async function uploadEmbedImage(params: {
   return { url: ticket.publicUrl, key: ticket.key };
 }
 
+export type ClearEmbedMessagesResult = {
+  cleared: true;
+  sessionId: string | null;
+};
+
+export async function clearEmbedMessages(params: {
+  token: string;
+  visitorId: string;
+  signal?: AbortSignal;
+}): Promise<ClearEmbedMessagesResult> {
+  const response = await fetch(endpoint('/api/embed/messages/clear'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: params.token, visitorId: params.visitorId }),
+    signal: params.signal,
+  });
+  if (!response.ok) throw await readError(response);
+  const body = (await response.json()) as { sessionId?: unknown };
+  return {
+    cleared: true,
+    sessionId: typeof body.sessionId === 'string' && body.sessionId ? body.sessionId : null,
+  };
+}
+
 export async function streamEmbedMessage(params: {
   token: string;
   visitorId: string;

@@ -206,7 +206,7 @@ button {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  min-width: 188px;
+  min-width: 210px;
   padding: 4px 0;
   background: var(--bnb-surface);
   color: var(--bnb-text);
@@ -238,6 +238,9 @@ button {
   background: transparent;
   color: var(--bnb-text);
   text-align: left;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
   transition: background 140ms ease;
 }
 
@@ -250,8 +253,13 @@ button {
   color: var(--bnb-muted);
 }
 
-.menu-item:hover {
+.menu-item:hover:not(:disabled) {
   background: color-mix(in srgb, var(--bnb-text) 5%, transparent);
+}
+
+.menu-item:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 :host([data-layout="inline"]) .menu-item[data-action="close"] {
