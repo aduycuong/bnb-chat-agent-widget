@@ -193,7 +193,12 @@
   });
   popup.open();
   popup.close();
+  popup.sendMessage('Cho tôi xem căn hộ 2 phòng ngủ');
 &lt;/script&gt;</code></pre>
+        <p class="note">
+          <code>sendMessage(text)</code> gửi tin như khách vừa nhập, không điền ô soạn.
+          Popup đang đóng sẽ mở. Hàm trả về Promise, reject khi tin trống, widget đang bận, hoặc máy chủ lỗi.
+        </p>
         <p class="note">
           Thẻ script chỉ gắn một widget nên không cần <code>data-name</code>.
           Gọi <code>init()</code> nhiều lần thì đặt <code>name</code> khác nhau để mỗi widget một visitor.

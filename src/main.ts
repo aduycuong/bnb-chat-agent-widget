@@ -8,8 +8,9 @@ const positionInput = document.querySelector<HTMLSelectElement>('#position');
 const inlineRoot = document.querySelector<HTMLElement>('#inline-root');
 const openButton = document.querySelector<HTMLButtonElement>('#open');
 const closeButton = document.querySelector<HTMLButtonElement>('#close');
+const sendButton = document.querySelector<HTMLButtonElement>('#send');
 
-if (!colorInput || !positionInput || !inlineRoot || !openButton || !closeButton) {
+if (!colorInput || !positionInput || !inlineRoot || !openButton || !closeButton || !sendButton) {
   throw new Error('Trang thử thiếu control của widget.');
 }
 
@@ -43,4 +44,9 @@ color.addEventListener('change', mount);
 positionSelect.addEventListener('change', mount);
 openButton.addEventListener('click', () => launcher?.open());
 closeButton.addEventListener('click', () => launcher?.close());
+sendButton.addEventListener('click', () => {
+  void launcher?.sendMessage('Cho tôi xem căn hộ 2 phòng ngủ').catch(() => {
+    // Lỗi đã hiện trong khung chat.
+  });
+});
 mount();

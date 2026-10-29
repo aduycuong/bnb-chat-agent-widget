@@ -89,6 +89,12 @@ export type BnbChatOptions = {
 export type BnbChatHandle = {
   open(): void;
   close(): void;
+  /**
+   * Gửi tin như khách vừa nhập, không điền ô soạn và không gửi ảnh đang đính kèm.
+   * Popup đang đóng sẽ mở. Promise kết thúc khi lượt gửi xong.
+   * Lỗi máy chủ vẫn hiện trong khung chat, và promise bị reject.
+   */
+  sendMessage(text: string): Promise<void>;
   destroy(): void;
 };
 

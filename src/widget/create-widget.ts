@@ -1066,14 +1066,18 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     field.classList.toggle('multiline', next > 44);
   }
 
-  async function postTurn(text: string, images: EmbedOutgoingImage[]): Promise<void> {
+  async function postTurn(
+    text: string,
+    images: EmbedOutgoingImage[],
+    focus: boolean,
+  ): Promise<void> {
     stickToBottom = true;
     hasUser = true;
     syncSuggestions();
     appendMessage('user', text, { images });
     pending = 1;
     syncTyping();
-    focusInput();
+    if (focus) focusInput();
 
     try {
       try {
@@ -1086,6 +1090,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       }
     } catch (error) {
       showError(error);
+      throw error;
     } finally {
       pending = 0;
       syncTyping();
@@ -1110,10 +1115,40 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     resizeInput();
     syncSend();
     try {
-      await postTurn(text, []);
+      await postTurn(text, [], true);
+    } catch {
+      // Lỗi đã hiện trong khung chat.
     } finally {
       sending = false;
       syncSend();
+    }
+  }
+
+  async function sendMessage(raw: unknown): Promise<void> {
+    if (abort.signal.aborted) throw new Error('BNB Chat: widget đã được gỡ.');
+    if (typeof raw !== 'string') throw new Error('BNB Chat: tin nhắn phải là chuỗi.');
+    const text = raw.trim();
+    if (!text) throw new Error('BNB Chat: tin nhắn trống.');
+    if (sending || restarting) throw new Error('BNB Chat: đang xử lý tin khác.');
+
+    if (options.layout === 'launcher' && !isOpen) setOpen(true, false);
+    sending = true;
+    syncSend();
+    try {
+      const connected = await connect();
+      if (abort.signal.aborted) throw new Error('BNB Chat: widget đã được gỡ.');
+      if (!connected) throw new Error('BNB Chat: chưa kết nối được.');
+      if (text.length > EMBED_MESSAGE_MAX_LENGTH) {
+        const message = `Tin nhắn dài quá ${EMBED_MESSAGE_MAX_LENGTH} ký tự.`;
+        appendMessage('assistant', message, { error: true });
+        throw new Error(`BNB Chat: ${message}`);
+      }
+      await postTurn(text, [], false);
+    } finally {
+      if (!abort.signal.aborted) {
+        sending = false;
+        syncSend();
+      }
     }
   }
 
@@ -1157,7 +1192,9 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
       clearDrafts();
       textarea.value = '';
       resizeInput();
-      await postTurn(text, images);
+      await postTurn(text, images, true);
+    } catch {
+      // Lỗi đã hiện trong khung chat.
     } finally {
       pending = 0;
       sending = false;
@@ -1379,6 +1416,7 @@ export function createWidget(options: ResolvedOptions): BnbChatHandle {
     close() {
       setOpen(false, true);
     },
+    sendMessage,
     destroy() {
       abort.abort();
       dropDrafts();
