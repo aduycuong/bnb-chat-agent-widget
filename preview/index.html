@@ -76,13 +76,17 @@
         border-radius: 8px;
         background: #fff;
       }
-      select, .controls button {
+      select, .controls button, .controls input[type="text"] {
         height: 36px;
         border-radius: 8px;
         border: 1px solid #d4d4d8;
         background: #fff;
         padding: 0 10px;
         font: inherit;
+      }
+      .controls input[type="text"] {
+        width: min(320px, 70vw);
+        color: inherit;
       }
       .controls button {
         cursor: pointer;
@@ -227,7 +231,13 @@
           </label>
           <button id="open" type="button">Mở hội thoại</button>
           <button id="close" class="ghost" type="button">Đóng</button>
+          <label>
+            Tin gửi
+            <input id="message" type="text" value="Cho tôi xem căn hộ 2 phòng ngủ" autocomplete="off" />
+          </label>
+          <button id="send" type="button">Gửi tin</button>
         </div>
+        <p id="send-note" class="note" hidden></p>
       </section>
 
       <section class="card stage-card">
@@ -279,6 +289,18 @@
         });
         document.querySelector('#close').addEventListener('click', function () {
           launcher.close();
+        });
+        var messageInput = document.querySelector('#message');
+        var sendNote = document.querySelector('#send-note');
+        document.querySelector('#send').addEventListener('click', function () {
+          sendNote.hidden = true;
+          sendNote.textContent = '';
+          sendNote.className = 'note';
+          launcher.sendMessage(messageInput.value).catch(function (error) {
+            sendNote.hidden = false;
+            sendNote.textContent = error && error.message ? error.message : 'Không gửi được tin.';
+            sendNote.className = 'err';
+          });
         });
         mount();
       }
